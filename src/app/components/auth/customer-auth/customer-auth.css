@@ -1,0 +1,262 @@
+body {
+    background-color: #f4f4f9;
+    display: flex;
+    font-family: Arial, sans-serif;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+:host {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.from-container {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    width: 380px;
+    box-shadow: rgba(0, 0, 0, 0.2) 0px 20px 50px;
+}
+
+.choose-option {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #eee;
+}
+
+.choose-option button {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #888;
+    transition: 0.3s;
+    position: relative;
+}
+
+.choose-option button.active {
+    color: rgb(42, 38, 247);
+}
+
+.choose-option button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: rgb(42, 38, 247);
+}
+
+.f-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: rgb(42, 38, 247);
+    border: none;
+    color: white;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.submit-btn:hover {
+    background-color: rgb(30, 25, 200);
+    box-shadow: 0 4px 15px rgba(42, 38, 247, 0.4);
+}
+
+.error-alert {
+    background-color: #ffeded;
+    color: #d63031;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #fab1a0;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.success-alert {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #c3e6cb;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.divider {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+    line-height: 0.1em;
+    margin: 22px 0;
+}
+
+.divider span {
+    background: #fff;
+    padding: 0 12px;
+    color: #888;
+    font-weight: 500;
+}
+
+.google-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #fff;
+    border: 1px solid #dcdcdc;
+    color: #222;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 15px;
+}
+
+.google-btn:hover {
+    background-color: #f8f8f8;
+    border-color: #c6c6c6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.google-btn:active {
+    transform: scale(0.99);
+}
+
+.google-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+}
+
+.google-icon-img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    display: block;
+}
+
+.forgot-password-row {
+    text-align: right;
+    margin-top: -5px;
+    margin-bottom: 15px;
+}
+
+.forgot-password-btn {
+    background: none;
+    border: none;
+    color: rgb(42, 38, 247);
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0;
+}
+
+.forgot-password-btn:hover {
+    text-decoration: underline;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.modal-card {
+    background: white;
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    border-radius: 14px;
+    box-shadow: rgba(0, 0, 0, 0.25) 0px 20px 60px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 22px;
+    color: #222;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    color: #666;
+}
+
+.close-btn:hover {
+    color: #111;
+}
+
+.otp-timer {
+    margin-top: -5px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #2a26f7;
+    font-weight: 600;
+}
+
+.otp-expired {
+    margin-top: -5px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #d63031;
+    font-weight: 600;
+}
+
+.role-badge {
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: rgb(42, 38, 247);
+    background-color: rgba(42, 38, 247, 0.08);
+    padding: 8px 12px;
+    border-radius: 999px;
+}
