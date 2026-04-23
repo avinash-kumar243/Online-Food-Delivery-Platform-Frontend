@@ -40,41 +40,6 @@
                 (input)="clearMessages()">
         </div>
 
-        <div class="f-group" *ngIf="!isLoginMode">
-            <label>License Number</label>
-            <input
-                type="text"
-                [(ngModel)]="authData.licenseNumber"
-                name="licenseNumber"
-                required
-                (input)="clearMessages()">
-        </div>
-
-        <div class="f-group" *ngIf="!isLoginMode">
-            <label>Vehicle Type</label>
-            <select
-                [(ngModel)]="authData.vehicleType"
-                name="vehicleType"
-                required
-                (change)="clearMessages()">
-                <option value="">Select Vehicle Type</option>
-                <option value="BIKE">Bike</option>
-                <option value="SCOOTER">Scooter</option>
-                <option value="CAR">Car</option>
-                <option value="VAN">Van</option>
-            </select>
-        </div>
-
-        <div class="f-group" *ngIf="!isLoginMode">
-            <label>Vehicle Number</label>
-            <input
-                type="text"
-                [(ngModel)]="authData.vehicleNumber"
-                name="vehicleNumber"
-                required
-                (input)="clearMessages()">
-        </div>
-
         <div class="f-group">
             <label>Password</label>
             <input
@@ -139,8 +104,18 @@
                     (input)="clearMessages()">
             </div>
 
-            <button type="button" class="submit-btn" (click)="sendOtp()">
-                Send OTP
+            <button
+                type="button"
+                class="submit-btn"
+                (click)="sendOtp()"
+                [disabled]="isSendingOtp || resendCooldown > 0">
+                {{
+                    isSendingOtp
+                        ? 'Sending OTP...'
+                        : resendCooldown > 0
+                        ? 'Wait ' + resendCooldown + 's'
+                        : 'Send OTP'
+                }}
             </button>
         </div>
 
@@ -165,11 +140,31 @@
             </div>
 
             <p class="otp-timer" *ngIf="otpTimer > 0">OTP expires in {{ otpTimer }} seconds</p>
-            <p class="otp-expired" *ngIf="otpTimer === 0">OTP expired. Please request a new OTP.</p>
+            <p class="otp-expired" *ngIf="otpTimer === 0">OTP expired or invalid. Please resend OTP.</p>
 
-            <button type="button" class="submit-btn" (click)="verifyOtp()">
-                Verify OTP
+            <button
+                type="button"
+                class="submit-btn"
+                (click)="verifyOtp()"
+                [disabled]="isVerifyingOtp">
+                {{ isVerifyingOtp ? 'Verifying OTP...' : 'Verify OTP' }}
             </button>
+
+            <div class="resend-row">
+                <button
+                    type="button"
+                    class="resend-link-btn"
+                    (click)="resendOtp()"
+                    [disabled]="isSendingOtp || resendCooldown > 0">
+                    {{
+                        isSendingOtp
+                            ? 'Sending OTP...'
+                            : resendCooldown > 0
+                            ? 'Resend in ' + resendCooldown + 's'
+                            : 'Resend OTP'
+                    }}
+                </button>
+            </div>
         </div>
 
         <div *ngIf="forgotStep === 'reset'">
@@ -191,8 +186,12 @@
                     (input)="clearMessages()">
             </div>
 
-            <button type="button" class="submit-btn" (click)="submitNewPassword()">
-                Update Password
+            <button
+                type="button"
+                class="submit-btn"
+                (click)="submitNewPassword()"
+                [disabled]="isResettingPassword">
+                {{ isResettingPassword ? 'Saving Password...' : 'Save Password' }}
             </button>
         </div>
     </div>
