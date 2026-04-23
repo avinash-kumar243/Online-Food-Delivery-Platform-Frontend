@@ -10,7 +10,6 @@ interface AuthResponse {
   message: string;
 }
 
-
 interface OtpResponse {
   message: string;
   email: string;
@@ -24,7 +23,6 @@ interface MessageResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-
   private http = inject(HttpClient);
   private router = inject(Router);
   private backendBaseUrl = environment.backendBaseUrl;
@@ -35,6 +33,14 @@ export class AuthService {
       tap((response: AuthResponse) => {
         if (response.token && response.token.trim()) {
           localStorage.setItem('token', response.token.trim());
+
+          if (endpoint.includes('/customer/')) {
+            localStorage.setItem('userRole', 'customer');
+          } else if (endpoint.includes('/restaurant/')) {
+            localStorage.setItem('userRole', 'restaurant');
+          } else if (endpoint.includes('/delivery-partner/')) {
+            localStorage.setItem('userRole', 'delivery-partner');
+          }
         }
       }),
       catchError((error: any) => {
@@ -48,6 +54,14 @@ export class AuthService {
       tap((response: AuthResponse) => {
         if (response.token && response.token.trim()) {
           localStorage.setItem('token', response.token.trim());
+
+          if (endpoint.includes('/customer/')) {
+            localStorage.setItem('userRole', 'customer');
+          } else if (endpoint.includes('/restaurant/')) {
+            localStorage.setItem('userRole', 'restaurant');
+          } else if (endpoint.includes('/delivery-partner/')) {
+            localStorage.setItem('userRole', 'delivery-partner');
+          }
         }
       }),
       catchError((error: any) => {
@@ -60,31 +74,38 @@ export class AuthService {
     window.location.href = `${this.backendBaseUrl}/oauth2/authorization/google?appRole=${role}`;
   }
 
-  handleGoogleToken(token: string): void {
+  handleGoogleToken(token: string, userType?: string): void {
     localStorage.setItem('token', token);
+
+    if (userType === 'CUSTOMER') {
+      localStorage.setItem('userRole', 'customer');
+    } else if (userType === 'RESTAURANT_OWNER') {
+      localStorage.setItem('userRole', 'restaurant');
+    } else if (userType === 'DELIVERY_AGENT') {
+      localStorage.setItem('userRole', 'delivery-partner');
+    }
   }
 
-
-  forgotPassword(email: string): Observable<OtpResponse> {
-    return this.http.post<OtpResponse>(`${this.apiUrl}/forgot-password`, { email }).pipe(
+  forgotPassword(rolePath: string, email: string): Observable<OtpResponse> {
+    return this.http.post<OtpResponse>(`${this.apiUrl}/${rolePath}/forget-password`, { email }).pipe(
       catchError((error: any) => {
         return throwError(() => error);
       })
     );
   }
 
-  verifyOtp(email: string, otp: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.apiUrl}/verify-otp`, { email, otp }).pipe(
+  verifyOtp(rolePath: string, email: string, otp: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.apiUrl}/${rolePath}/verify-otp`, { email, otp }).pipe(
       catchError((error: any) => {
         return throwError(() => error);
       })
     );
   }
 
-  resetPassword(email: string, password: string, confirmPassword: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.apiUrl}/reset-password`, {
+  resetPassword(rolePath: string, email: string, newPassword: string, confirmPassword: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.apiUrl}/${rolePath}/reset-password`, {
       email,
-      password,
+      newPassword,
       confirmPassword
     }).pipe(
       catchError((error: any) => {
@@ -94,8 +115,18 @@ export class AuthService {
   }
 
   logout() {
+    const userRole = localStorage.getItem('userRole');
+
     localStorage.removeItem('token');
-    this.router.navigate(['/auth/customer']);
+    localStorage.removeItem('userRole');
+
+    if (userRole === 'restaurant') {
+      this.router.navigate(['/restaurant/auth']);
+    } else if (userRole === 'delivery-partner') {
+      this.router.navigate(['/delivery-partner/auth']);
+    } else {
+      this.router.navigate(['/customer/auth']);
+    }
   }
 
   isLoggedIn(): boolean {
@@ -104,5 +135,9 @@ export class AuthService {
 
   getToken() {
     return localStorage.getItem('token');
+  }
+
+  getUserRole() {
+    return localStorage.getItem('userRole');
   }
 }
