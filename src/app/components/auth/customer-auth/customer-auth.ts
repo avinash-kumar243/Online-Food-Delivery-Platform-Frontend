@@ -1,8 +1,9 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { Router, ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-customer-auth',
@@ -11,29 +12,39 @@ import { Router, ActivatedRoute } from '@angular/router';
   templateUrl: './customer-auth.html',
   styleUrls: ['./customer-auth.css']
 })
-export class CustomerAuthComponent implements OnInit {
+export class CustomerAuthComponent implements OnInit, OnDestroy {
   isLoginMode = true;
   errorMessage = '';
   successMessage = '';
 
   forgotPasswordModalOpen = false;
   forgotStep: 'email' | 'otp' | 'reset' = 'email';
+
   otpTimer = 0;
+  resendCooldown = 0;
+
+  isSendingOtp = false;
+  isVerifyingOtp = false;
+  isResettingPassword = false;
+
   private otpInterval: any;
+  private resendCooldownInterval: any;
 
   currentRoleLabel = 'Customer';
   currentBackendRole = 'CUSTOMER';
+  currentRolePath = 'customer';
 
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private cdr = inject(ChangeDetectorRef);
 
   authData = {
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    phone: '',
+    phone: ''
   };
 
   forgotPasswordData = {
@@ -57,6 +68,11 @@ export class CustomerAuthComponent implements OnInit {
         }, 1000);
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopOtpTimer();
+    this.stopResendCooldown();
   }
 
   clearMessages() {
@@ -84,7 +100,12 @@ export class CustomerAuthComponent implements OnInit {
       password: '',
       confirmPassword: ''
     };
+    this.isSendingOtp = false;
+    this.isVerifyingOtp = false;
+    this.isResettingPassword = false;
     this.stopOtpTimer();
+    this.stopResendCooldown();
+    this.cdr.detectChanges();
   }
 
   closeForgotPasswordModal() {
@@ -96,13 +117,19 @@ export class CustomerAuthComponent implements OnInit {
       password: '',
       confirmPassword: ''
     };
+    this.isSendingOtp = false;
+    this.isVerifyingOtp = false;
+    this.isResettingPassword = false;
     this.stopOtpTimer();
+    this.stopResendCooldown();
     this.clearMessages();
+    this.cdr.detectChanges();
   }
 
   private startOtpTimer(seconds: number) {
     this.stopOtpTimer();
     this.otpTimer = seconds;
+    this.cdr.detectChanges();
 
     this.otpInterval = setInterval(() => {
       if (this.otpTimer > 0) {
@@ -110,6 +137,7 @@ export class CustomerAuthComponent implements OnInit {
       } else {
         this.stopOtpTimer();
       }
+      this.cdr.detectChanges();
     }, 1000);
   }
 
@@ -118,10 +146,36 @@ export class CustomerAuthComponent implements OnInit {
       clearInterval(this.otpInterval);
       this.otpInterval = null;
     }
+    this.otpTimer = 0;
+    this.cdr.detectChanges();
+  }
+
+  private startResendCooldown(seconds: number) {
+    this.stopResendCooldown();
+    this.resendCooldown = seconds;
+    this.cdr.detectChanges();
+
+    this.resendCooldownInterval = setInterval(() => {
+      if (this.resendCooldown > 0) {
+        this.resendCooldown--;
+      } else {
+        this.stopResendCooldown();
+      }
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  private stopResendCooldown() {
+    if (this.resendCooldownInterval) {
+      clearInterval(this.resendCooldownInterval);
+      this.resendCooldownInterval = null;
+    }
+    this.resendCooldown = 0;
+    this.cdr.detectChanges();
   }
 
   private isValidEmail(email: string): boolean {
-    return /^(?=.*\d)(?=.*[^\w\s]).+@.+\..+$/.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
   private isValidPassword(password: string): boolean {
@@ -136,17 +190,47 @@ export class CustomerAuthComponent implements OnInit {
       return;
     }
 
-    this.authService.forgotPassword(this.forgotPasswordData.email).subscribe({
-      next: (res) => {
-        this.successMessage = res.message || 'OTP sent successfully';
-        this.forgotStep = 'otp';
-        this.startOtpTimer(res.expiryInSeconds || 60);
-      },
-      error: (err) => {
-        this.errorMessage =
-          err.error?.message || err.message || 'Account not found';
-      }
-    });
+    if (!this.isValidEmail(this.forgotPasswordData.email)) {
+      this.errorMessage = 'Enter a valid email address!';
+      return;
+    }
+
+    if (this.isSendingOtp || this.resendCooldown > 0) {
+      return;
+    }
+
+    this.isSendingOtp = true;
+    this.startResendCooldown(3);
+
+    this.authService
+      .forgotPassword(this.currentRolePath, this.forgotPasswordData.email)
+      .pipe(
+        finalize(() => {
+          this.isSendingOtp = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.successMessage = res.message || 'OTP sent to your email';
+          this.forgotStep = 'otp';
+          this.forgotPasswordData.otp = '';
+          this.startOtpTimer(60);
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.errorMessage = err.error?.message || err.message || 'Account not found';
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  resendOtp() {
+    if (this.isSendingOtp || this.resendCooldown > 0) {
+      return;
+    }
+
+    this.sendOtp();
   }
 
   verifyOtp() {
@@ -157,20 +241,44 @@ export class CustomerAuthComponent implements OnInit {
       return;
     }
 
-    this.authService.verifyOtp(
-      this.forgotPasswordData.email,
-      this.forgotPasswordData.otp
-    ).subscribe({
-      next: (res) => {
-        this.successMessage = res.message || 'OTP verified successfully';
-        this.forgotStep = 'reset';
-        this.stopOtpTimer();
-      },
-      error: (err) => {
-        this.errorMessage =
-          err.error?.message || err.message || 'Invalid OTP';
-      }
-    });
+    if (this.isVerifyingOtp) {
+      return;
+    }
+
+    this.isVerifyingOtp = true;
+
+    this.authService
+      .verifyOtp(
+        this.currentRolePath,
+        this.forgotPasswordData.email,
+        this.forgotPasswordData.otp
+      )
+      .pipe(
+        finalize(() => {
+          this.isVerifyingOtp = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.successMessage = res.message || 'OTP verified successfully';
+          this.forgotStep = 'reset';
+          this.forgotPasswordData.password = '';
+          this.forgotPasswordData.confirmPassword = '';
+          this.stopOtpTimer();
+          this.stopResendCooldown();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.errorMessage = err.error?.message || err.message || 'Invalid or expired OTP';
+
+          // As you asked:
+          // if OTP is wrong or expired, enable resend immediately
+          this.stopOtpTimer();
+          this.stopResendCooldown();
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   submitNewPassword() {
@@ -192,24 +300,38 @@ export class CustomerAuthComponent implements OnInit {
       return;
     }
 
-    this.authService.resetPassword(
-      this.forgotPasswordData.email,
-      this.forgotPasswordData.password,
-      this.forgotPasswordData.confirmPassword
-    ).subscribe({
-      next: (res) => {
-        this.successMessage = res.message || 'Password reset successfully';
+    if (this.isResettingPassword) {
+      return;
+    }
 
-        setTimeout(() => {
-          this.closeForgotPasswordModal();
-          this.router.navigate(['/dashboard']);
-        }, 1500);
-      },
-      error: (err) => {
-        this.errorMessage =
-          err.error?.message || err.message || 'Password reset failed';
-      }
-    });
+    this.isResettingPassword = true;
+
+    this.authService
+      .resetPassword(
+        this.currentRolePath,
+        this.forgotPasswordData.email,
+        this.forgotPasswordData.password,
+        this.forgotPasswordData.confirmPassword
+      )
+      .pipe(
+        finalize(() => {
+          this.isResettingPassword = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.successMessage = res.message || 'Password reset successfully';
+
+          setTimeout(() => {
+            this.closeForgotPasswordModal();
+            this.router.navigate(['/customer/auth']);
+          }, 1200);
+        },
+        error: (err) => {
+          this.errorMessage = err.error?.message || err.message || 'Password reset failed';
+        }
+      });
   }
 
   onSubmit() {
@@ -217,6 +339,11 @@ export class CustomerAuthComponent implements OnInit {
 
     if (!this.authData.email || !this.authData.password) {
       this.errorMessage = 'Email and password are required!';
+      return;
+    }
+
+    if (!this.isValidEmail(this.authData.email)) {
+      this.errorMessage = 'Enter a valid email address!';
       return;
     }
 
@@ -233,12 +360,6 @@ export class CustomerAuthComponent implements OnInit {
 
       if (!/^\d{10}$/.test(this.authData.phone)) {
         this.errorMessage = 'Phone number must be exactly 10 digits!';
-        return;
-      }
-
-      if (!this.isValidEmail(this.authData.email)) {
-        this.errorMessage =
-          'Email must contain at least 1 digit, 1 special symbol, @ and .';
         return;
       }
 
@@ -260,16 +381,15 @@ export class CustomerAuthComponent implements OnInit {
         phone: this.authData.phone
       };
 
-      // Use the correct endpoint for customer registration
       this.authService.register(signupData, '/customer/register').subscribe({
         next: () => {
           this.errorMessage = '';
-          this.successMessage = 'Signup successful! Redirecting to login...';
+          this.successMessage = 'Signup successful! Redirecting...';
 
           setTimeout(() => {
             this.clearMessages();
             this.router.navigate(['/dashboard']);
-          }, 2000);
+          }, 1500);
         },
         error: (err) => {
           this.successMessage = '';
@@ -277,14 +397,12 @@ export class CustomerAuthComponent implements OnInit {
             err.error?.message || err?.error?.error || err.message || 'Signup failed. Please try again.';
         }
       });
-
     } else {
       const loginData = {
         email: this.authData.email,
         password: this.authData.password
       };
 
-      // Use the correct endpoint for customer login
       this.authService.login(loginData, '/customer/login').subscribe({
         next: () => {
           this.errorMessage = '';
