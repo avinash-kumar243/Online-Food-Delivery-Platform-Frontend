@@ -8,9 +8,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     '/auth/delivery-partner/login',
     '/auth/restaurant/register',
     '/auth/restaurant/login',
-    '/auth/forgot-password',
-    '/auth/verify-otp',
-    '/auth/reset-password'
+
+    '/auth/customer/forget-password',
+    '/auth/customer/verify-otp',
+    '/auth/customer/reset-password',
+
+    '/auth/delivery-partner/forget-password',
+    '/auth/delivery-partner/verify-otp',
+    '/auth/delivery-partner/reset-password',
+
+    '/auth/restaurant/forget-password',
+    '/auth/restaurant/verify-otp',
+    '/auth/restaurant/reset-password'
   ];
 
   const isPublicEndpoint = publicEndpoints.some(endpoint => req.url.includes(endpoint));

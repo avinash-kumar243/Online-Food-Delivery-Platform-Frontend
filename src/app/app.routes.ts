@@ -6,11 +6,12 @@ import { Welcome} from './components/welcome/welcome';
 import { Dashboard } from './components/dashboard/dashboard';
 
 export const routes: Routes = [
-     { path: 'welcome', component: Welcome },
+  { path: '', redirectTo: '/welcome', pathMatch: 'full' },
+  { path: 'welcome', component: Welcome },
 
-    { path:'auth/customer', component: CustomerAuthComponent },
-    { path: 'auth/restaurant', component: RestaurantAuthComponent },
-    { path: 'auth/delivery-partner', component: DeliveryPartnerAuthComponent },
+  { path:'customer/auth', component: CustomerAuthComponent },
+  { path: 'restaurant/auth', component: RestaurantAuthComponent },
+  { path: 'delivery-partner/auth', component: DeliveryPartnerAuthComponent },
 
-    { path: 'dashboard', component: Dashboard }
+  { path: 'dashboard', component: Dashboard }
 ];
