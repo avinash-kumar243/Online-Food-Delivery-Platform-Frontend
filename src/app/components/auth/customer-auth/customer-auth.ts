@@ -26,6 +26,7 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
   isSendingOtp = false;
   isVerifyingOtp = false;
   isResettingPassword = false;
+  isSubmittingAuth = false;
 
   private otpInterval: any;
   private resendCooldownInterval: any;
@@ -58,13 +59,15 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       const token = params['token'];
       const oauth2 = params['oauth2'];
+      const userType = params['userType'];
+      const userId = params['userId'] ? Number(params['userId']) : null;
 
       if (token && oauth2 === 'success') {
-        this.authService.handleGoogleToken(token);
+        this.authService.handleGoogleToken(token, userType, Number.isFinite(userId) ? userId : null);
         this.successMessage = 'Google login successful! Redirecting...';
 
         setTimeout(() => {
-          this.router.navigate(['/dashboard']);
+          this.navigateAfterAuth();
         }, 1000);
       }
     });
@@ -337,6 +340,10 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
   onSubmit() {
     this.clearMessages();
 
+    if (this.isSubmittingAuth) {
+      return;
+    }
+
     if (!this.authData.email || !this.authData.password) {
       this.errorMessage = 'Email and password are required!';
       return;
@@ -381,14 +388,20 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
         phone: this.authData.phone
       };
 
-      this.authService.register(signupData, '/customer/register').subscribe({
+      this.isSubmittingAuth = true;
+      this.authService.register(signupData, '/customer/register').pipe(
+        finalize(() => {
+          this.isSubmittingAuth = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
         next: () => {
           this.errorMessage = '';
           this.successMessage = 'Signup successful! Redirecting...';
 
           setTimeout(() => {
             this.clearMessages();
-            this.router.navigate(['/dashboard']);
+            this.navigateAfterAuth();
           }, 1500);
         },
         error: (err) => {
@@ -403,14 +416,20 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
         password: this.authData.password
       };
 
-      this.authService.login(loginData, '/customer/login').subscribe({
+      this.isSubmittingAuth = true;
+      this.authService.login(loginData, '/customer/login').pipe(
+        finalize(() => {
+          this.isSubmittingAuth = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
         next: () => {
           this.errorMessage = '';
           this.successMessage = 'Login successful! Redirecting...';
 
           setTimeout(() => {
             this.clearMessages();
-            this.router.navigate(['/dashboard']);
+            this.navigateAfterAuth();
           }, 1000);
         },
         error: (err) => {
@@ -420,5 +439,10 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  private navigateAfterAuth(): void {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    this.authService.redirectToDashboard(returnUrl);
   }
 }

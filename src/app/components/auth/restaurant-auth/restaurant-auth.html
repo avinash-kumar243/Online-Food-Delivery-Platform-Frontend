@@ -69,8 +69,8 @@
         <div *ngIf="errorMessage" class="error-alert">{{ errorMessage }}</div>
         <div *ngIf="successMessage" class="success-alert">{{ successMessage }}</div>
 
-        <button type="submit" class="submit-btn">
-            {{ isLoginMode ? 'Login' : 'Create Account' }}
+        <button type="submit" class="submit-btn" [disabled]="isSubmittingAuth">
+            {{ isSubmittingAuth ? 'Please wait...' : isLoginMode ? 'Login' : 'Create Account' }}
         </button>
     </form>
 
@@ -78,7 +78,7 @@
         <span>OR</span>
     </div>
 
-    <button type="button" class="google-btn" (click)="loginWithGoogle()">
+    <button type="button" class="google-btn" (click)="loginWithGoogle()" [disabled]="isSubmittingAuth">
         <img src="/google-icon.png" alt="Google" class="google-icon-img">
         <span>Continue with Google</span>
     </button>
