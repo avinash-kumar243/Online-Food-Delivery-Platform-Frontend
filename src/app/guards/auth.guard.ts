@@ -7,7 +7,14 @@ export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   if (authService.isLoggedIn()) return true;
-  
-  router.navigate(['/auth']);
+
+  authService.clearInvalidSession();
+  const redirectPath = state.url.startsWith('/dashboard/restaurant-owner')
+    ? '/restaurant/auth'
+    : state.url.startsWith('/dashboard/delivery-partner')
+      ? '/delivery-partner/auth'
+      : '/customer/auth';
+
+  router.navigate([redirectPath], { queryParams: { returnUrl: state.url } });
   return false;
 };

@@ -1,6 +1,12 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
+import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
   const publicEndpoints = [
     '/auth/customer/register',
     '/auth/customer/login',
@@ -25,7 +31,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isPublicEndpoint = publicEndpoints.some(endpoint => req.url.includes(endpoint));
 
   if (isPublicEndpoint) {
-    return next(req);
+    return next(req).pipe(
+      catchError((error: unknown) => throwError(() => error))
+    );
   }
 
   const token = localStorage.getItem('token')?.trim();
@@ -36,8 +44,36 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         Authorization: `Bearer ${token}`
       }
     });
-    return next(cloned);
+    return next(cloned).pipe(
+      catchError((error: any) => {
+        if (error?.status === 401 || error?.status === 403) {
+          const loginRoute = authService.getUserRole() === 'RESTAURANT_OWNER'
+            ? '/restaurant/auth'
+            : authService.getUserRole() === 'DELIVERY_PARTNER'
+              ? '/delivery-partner/auth'
+              : '/customer/auth';
+          authService.clearInvalidSession();
+          router.navigate([loginRoute], { queryParams: { session: 'expired' } });
+        }
+
+        return throwError(() => error);
+      })
+    );
   }
 
-  return next(req);
+  return next(req).pipe(
+    catchError((error: any) => {
+      if (error?.status === 401 || error?.status === 403) {
+        const loginRoute = authService.getUserRole() === 'RESTAURANT_OWNER'
+          ? '/restaurant/auth'
+          : authService.getUserRole() === 'DELIVERY_PARTNER'
+            ? '/delivery-partner/auth'
+            : '/customer/auth';
+        authService.clearInvalidSession();
+        router.navigate([loginRoute], { queryParams: { session: 'expired' } });
+      }
+
+      return throwError(() => error);
+    })
+  );
 };
