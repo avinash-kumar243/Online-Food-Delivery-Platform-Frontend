@@ -1,0 +1,336 @@
+<ng-container *ngIf="dashboard$ | async as dashboard">
+  <div class="dashboard-page">
+    <app-dashboard-header [user]="dashboard.user"></app-dashboard-header>
+
+    <main class="dashboard-main">
+      <section id="profile-summary" class="hero-grid">
+        <article class="surface-card hero-card">
+          <p class="dashboard-kicker">Customer Dashboard</p>
+          <h1>Welcome back, Customer</h1>
+          <p class="dashboard-subtitle">
+            Discover restaurants, order your favorite food, and track deliveries in real time.
+          </p>
+
+          <div class="hero-actions">
+            <button type="button" class="primary-btn">Browse Restaurants</button>
+            <button type="button" class="secondary-btn">View Cart</button>
+          </div>
+
+          <div class="hero-notes">
+            <div>
+              <strong>{{ dashboard.activeOrder?.id }}</strong>
+              <span>Current live order</span>
+            </div>
+            <div>
+              <strong>24 mins</strong>
+              <span>Estimated delivery window</span>
+            </div>
+          </div>
+        </article>
+
+        <div class="hero-side">
+          <article class="surface-card hero-mini-card">
+            <div class="mini-icon">🎁</div>
+            <div>
+              <strong>Rewards unlocked</strong>
+              <p>2 promo codes ready for tonight's dinner checkout.</p>
+            </div>
+          </article>
+
+          <article class="surface-card hero-mini-card">
+            <div class="mini-icon">💳</div>
+            <div>
+              <strong>Wallet ready</strong>
+              <p>Fast one-tap payment with Rs. {{ dashboard.walletBalance }} in your balance.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section surface-card action-strip">
+        <div class="section-header">
+          <div>
+            <p class="dashboard-kicker">Quick Actions</p>
+            <h2>Everything you need in one place</h2>
+          </div>
+        </div>
+
+        <div class="quick-actions-grid">
+          <article class="quick-action-card surface-card-muted" *ngFor="let action of dashboard.quickActions">
+            <span class="action-icon">{{ action.icon }}</span>
+            <strong>{{ action.label }}</strong>
+            <p>{{ action.description }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section surface-card search-card">
+        <div class="section-header">
+          <div>
+            <p class="dashboard-kicker">Search And Filter</p>
+            <h2>Find restaurants or dishes faster</h2>
+            <p class="section-helper">Start with a cuisine, filter by rating, or narrow results by delivery speed.</p>
+          </div>
+        </div>
+
+        <div class="search-shell">
+          <input type="text" placeholder="Search restaurants or dishes">
+          <button type="button" class="primary-btn">Search</button>
+        </div>
+
+        <div class="pill-row">
+          <button
+            type="button"
+            class="filter-chip"
+            *ngFor="let filter of dashboard.filters"
+            [class.active]="selectedFilter() === filter"
+            (click)="setFilter(filter)">
+            {{ filter }}
+          </button>
+        </div>
+      </section>
+
+      <section class="dashboard-section stats-grid">
+        <article class="surface-card stat-card" *ngFor="let stat of dashboard.stats">
+          <div class="stat-card-top">
+            <div>
+              <span class="label">{{ stat.label }}</span>
+              <div class="value">{{ stat.value }}</div>
+            </div>
+            <span class="icon-badge" [ngClass]="stat.accent">{{ stat.icon }}</span>
+          </div>
+          <p class="helper">{{ stat.helper }}</p>
+        </article>
+      </section>
+
+      <section class="dashboard-section split-layout">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Restaurant Discovery</p>
+              <h2>Recommended for your next order</h2>
+            </div>
+            <span class="badge-chip">Top rated nearby</span>
+          </div>
+
+          <div class="restaurant-grid" *ngIf="dashboard.restaurants.length; else emptyRestaurants">
+            <article class="restaurant-card" *ngFor="let restaurant of dashboard.restaurants">
+              <div class="restaurant-image">
+                <span>{{ restaurant.imageLabel }}</span>
+              </div>
+              <div class="restaurant-copy">
+                <div class="restaurant-head">
+                  <strong>{{ restaurant.name }}</strong>
+                  <span class="rating">★ {{ restaurant.rating }}</span>
+                </div>
+                <p>{{ restaurant.cuisine }}</p>
+                <div class="restaurant-meta">
+                  <span>{{ restaurant.deliveryTime }}</span>
+                  <span>Rs. {{ restaurant.priceForTwo }} for two</span>
+                </div>
+                <div class="restaurant-footer">
+                  <span class="offer-chip">{{ restaurant.offer }}</span>
+                  <button type="button" class="primary-btn compact-btn">View Menu</button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #emptyRestaurants>
+            <div class="empty-state">No restaurants available yet. Try updating your location or filters.</div>
+          </ng-template>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Cart Summary</p>
+              <h2>Your current checkout</h2>
+            </div>
+          </div>
+
+          <div class="cart-highlight">
+            <span class="cart-label">Current Restaurant</span>
+            <strong>{{ dashboard.cartSummary.restaurantName }}</strong>
+            <div class="cart-total">Rs. {{ dashboard.cartSummary.totalAmount }}</div>
+          </div>
+
+          <div class="meta-list">
+            <div class="meta-row">
+              <span>Items in cart</span>
+              <strong>{{ dashboard.cartSummary.itemCount }}</strong>
+            </div>
+            <div class="meta-row">
+              <span>Promo suggestion</span>
+              <strong>{{ dashboard.cartSummary.promoLabel }}</strong>
+            </div>
+          </div>
+
+          <div class="empty-state subtle-note">{{ dashboard.cartSummary.note }}</div>
+
+          <div class="card-actions">
+            <button type="button" class="secondary-btn">Apply Promo</button>
+            <button type="button" class="primary-btn">Checkout</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="dashboard-section split-layout-even">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Order Tracking</p>
+              <h2>Track your active order</h2>
+            </div>
+            <span class="badge-chip" *ngIf="dashboard.activeOrder">{{ dashboard.activeOrder.status }}</span>
+          </div>
+
+          <ng-container *ngIf="dashboard.activeOrder as order; else emptyTracking">
+            <div class="track-card">
+              <div class="track-head">
+                <div>
+                  <strong>{{ order.restaurantName }}</strong>
+                  <p>{{ order.orderDate }} • {{ order.id }}</p>
+                </div>
+                <strong class="amount">Rs. {{ order.amount }}</strong>
+              </div>
+
+              <div class="timeline-stepper">
+                <div
+                  class="timeline-step"
+                  *ngFor="let step of order.statusSteps; let last = last"
+                  [class.completed]="step.completed"
+                  [class.active]="step.active"
+                  [class.last]="last">
+                  <span class="step-dot"></span>
+                  <span class="step-label">{{ step.label }}</span>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+
+          <ng-template #emptyTracking>
+            <div class="empty-state">No active order right now. Browse restaurants to place your next order.</div>
+          </ng-template>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Order History</p>
+              <h2>Recent orders</h2>
+            </div>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.orderHistory.length; else emptyHistory">
+            <article class="history-card" *ngFor="let order of dashboard.orderHistory">
+              <div class="history-head">
+                <div>
+                  <strong>{{ order.restaurantName }}</strong>
+                  <p>{{ order.orderDate }} • {{ order.id }}</p>
+                </div>
+                <span [class]="historyStatusClass(order.status)">{{ order.status }}</span>
+              </div>
+
+              <p class="history-items">{{ order.items.join(', ') }}</p>
+
+              <div class="history-footer">
+                <strong>Rs. {{ order.amount }}</strong>
+                <div class="history-actions">
+                  <button type="button" class="secondary-btn compact-btn">Reorder</button>
+                  <button type="button" class="ghost-btn compact-btn" [disabled]="!order.canCancel">Cancel</button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #emptyHistory>
+            <div class="empty-state">Your previous orders will show up here once you complete a checkout.</div>
+          </ng-template>
+        </article>
+      </section>
+
+      <section class="dashboard-section split-layout-even">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Wallet</p>
+              <h2>Balance and transaction history</h2>
+            </div>
+          </div>
+
+          <div class="wallet-balance-card">
+            <span>Available balance</span>
+            <strong>Rs. {{ dashboard.walletBalance }}</strong>
+          </div>
+
+          <div class="stack-list">
+            <article class="wallet-row" *ngFor="let transaction of dashboard.walletTransactions">
+              <div>
+                <strong>{{ transaction.title }}</strong>
+                <p>{{ transaction.date }} • {{ transaction.method }}</p>
+              </div>
+              <div class="wallet-amount">
+                <span [class]="walletTypeClass(transaction.type)">{{ transaction.type }}</span>
+                <strong>{{ transaction.type === 'CREDIT' ? '+' : '-' }} Rs. {{ transaction.amount }}</strong>
+              </div>
+            </article>
+          </div>
+
+          <div class="card-actions">
+            <button type="button" class="secondary-btn">Add Money</button>
+            <button type="button" class="primary-btn">Transaction History</button>
+          </div>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Feedback</p>
+              <h2>Rate your latest experience</h2>
+            </div>
+          </div>
+
+          <div class="stack-list">
+            <article class="feedback-card" *ngFor="let item of dashboard.feedback">
+              <div>
+                <strong>{{ item.label }}</strong>
+                <p>{{ item.helper }}</p>
+              </div>
+              <div class="feedback-score">
+                <span>★</span>
+                <strong>{{ feedbackRatingLabel(item.rating) }}</strong>
+              </div>
+            </article>
+          </div>
+
+          <button type="button" class="primary-btn full-btn">Submit Review</button>
+        </article>
+      </section>
+
+      <section class="dashboard-section surface-card content-card">
+        <div class="section-header">
+          <div>
+            <p class="dashboard-kicker">Recent Activity</p>
+            <h2>Latest updates across your account</h2>
+          </div>
+        </div>
+
+        <div class="stack-list" *ngIf="dashboard.recentActivity.length; else emptyActivity">
+          <article class="activity-row" *ngFor="let activity of dashboard.recentActivity">
+            <span class="activity-dot"></span>
+            <div>
+              <strong>{{ activity.title }}</strong>
+              <p>{{ activity.description }}</p>
+            </div>
+            <span class="activity-time">{{ activity.timeLabel }}</span>
+          </article>
+        </div>
+
+        <ng-template #emptyActivity>
+          <div class="empty-state">New account activity will appear here once you place or manage orders.</div>
+        </ng-template>
+      </section>
+    </main>
+  </div>
+</ng-container>
