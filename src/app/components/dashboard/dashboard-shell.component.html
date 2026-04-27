@@ -1,0 +1,18 @@
+<div class="dashboard-shell" *ngIf="currentUser as user">
+    <header class="topbar">
+        <div>
+            <span class="brand-mark">QuickBite</span>
+            <p>{{ roleLabel }} workspace</p>
+        </div>
+        <div class="topbar-actions">
+            <span class="session-chip">{{ user.email || 'Authenticated' }}</span>
+            <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <app-customer-dashboard *ngIf="user.role === 'CUSTOMER'" [currentUser]="user"></app-customer-dashboard>
+        <app-resto-dashboard *ngIf="user.role === 'RESTAURANT_OWNER'" [currentUser]="user"></app-resto-dashboard>
+        <app-delivery-dashboard *ngIf="user.role === 'DELIVERY_PARTNER'" [currentUser]="user"></app-delivery-dashboard>
+    </main>
+</div>
