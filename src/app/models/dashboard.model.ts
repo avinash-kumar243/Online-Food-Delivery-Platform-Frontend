@@ -1,9 +1,10 @@
 import { CurrentUser, UserRole } from './auth.models';
 
 export const DASHBOARD_ROUTE_BY_ROLE: Record<UserRole, string> = {
-  CUSTOMER: '/dashboard/customer',
-  RESTAURANT_OWNER: '/dashboard/restaurant-owner',
-  DELIVERY_PARTNER: '/dashboard/delivery-partner'
+  CUSTOMER: '/customer/dashboard',
+  RESTAURANT_OWNER: '/restaurant-owner/dashboard',
+  DELIVERY_PARTNER: '/delivery-partner/dashboard',
+  ADMIN: '/admin/dashboard'
 };
 
 export type ApprovalStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';

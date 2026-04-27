@@ -84,7 +84,9 @@ export class AuthService {
     localStorage.removeItem('authUserId');
     this.currentUserSubject.next(null);
 
-    if (userRole === 'RESTAURANT_OWNER' || userRole === 'restaurant') {
+    if (userRole === 'ADMIN') {
+      this.router.navigate(['/welcome']);
+    } else if (userRole === 'RESTAURANT_OWNER' || userRole === 'restaurant') {
       this.router.navigate(['/restaurant/auth']);
     } else if (userRole === 'DELIVERY_PARTNER' || userRole === 'DELIVERY_AGENT' || userRole === 'delivery-partner') {
       this.router.navigate(['/delivery-partner/auth']);
@@ -187,6 +189,7 @@ export class AuthService {
   private normalizeRole(role?: string | null): UserRole | null {
     const normalized = role?.trim().toUpperCase().replace(/-/g, '_');
     if (!normalized) return null;
+    if (normalized === 'ADMIN') return 'ADMIN';
     if (normalized === 'CUSTOMER') return 'CUSTOMER';
     if (normalized === 'RESTAURANT' || normalized === 'RESTAURANT_OWNER') return 'RESTAURANT_OWNER';
     if (normalized === 'DELIVERY_AGENT' || normalized === 'DELIVERY_PARTNER') return 'DELIVERY_PARTNER';

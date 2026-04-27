@@ -51,6 +51,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
             ? '/restaurant/auth'
             : authService.getUserRole() === 'DELIVERY_PARTNER'
               ? '/delivery-partner/auth'
+              : authService.getUserRole() === 'ADMIN'
+                ? '/welcome'
               : '/customer/auth';
           authService.clearInvalidSession();
           router.navigate([loginRoute], { queryParams: { session: 'expired' } });
@@ -68,6 +70,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           ? '/restaurant/auth'
           : authService.getUserRole() === 'DELIVERY_PARTNER'
             ? '/delivery-partner/auth'
+            : authService.getUserRole() === 'ADMIN'
+              ? '/welcome'
             : '/customer/auth';
         authService.clearInvalidSession();
         router.navigate([loginRoute], { queryParams: { session: 'expired' } });

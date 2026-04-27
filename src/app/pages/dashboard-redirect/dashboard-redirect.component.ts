@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { DashboardService } from '../../services/dashboard.service';
 
 @Component({
   selector: 'app-dashboard-redirect',
@@ -42,7 +41,6 @@ export class DashboardRedirectComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
-  private readonly dashboardService = inject(DashboardService);
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
@@ -62,7 +60,7 @@ export class DashboardRedirectComponent implements OnInit {
 
       const role = this.authService.getUserRole();
       if (role) {
-        this.router.navigate([this.dashboardService.getDashboardRoute(role)], { replaceUrl: true });
+        this.router.navigate([this.authService.getDashboardRoute(role)], { replaceUrl: true });
         return;
       }
 

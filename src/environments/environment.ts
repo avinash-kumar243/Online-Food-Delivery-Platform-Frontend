@@ -5,5 +5,6 @@ export const environment = {
   restaurantBaseUrl: 'http://localhost:8082',
   menuBaseUrl: 'http://localhost:8083',
   cartBaseUrl: 'http://localhost:8084',
-  orderBaseUrl: 'http://localhost:8085'
+  orderBaseUrl: 'http://localhost:8085',
+  paymentBaseUrl: 'http://localhost:8086'
 };

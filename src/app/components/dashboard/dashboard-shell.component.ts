@@ -52,7 +52,8 @@ export class DashboardShellComponent implements OnInit {
     this.roleLabel = {
       CUSTOMER: 'Customer',
       RESTAURANT_OWNER: 'Restaurant Owner',
-      DELIVERY_PARTNER: 'Delivery Partner'
-    }[this.currentUser.role];
+      DELIVERY_PARTNER: 'Delivery Partner',
+      ADMIN: 'Admin'
+    }[this.currentUser.role] ?? 'QuickBite User';
   }
 }
