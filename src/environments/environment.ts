@@ -1,5 +1,5 @@
 export const environment = {
-  production: true,
+  production: false,
   backendBaseUrl: 'http://localhost:8081',
   authBaseUrl: 'http://localhost:8081',
   restaurantBaseUrl: 'http://localhost:8082',
