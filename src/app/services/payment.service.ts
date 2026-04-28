@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { ApiResponse, Payment } from '../models/app.models';
 
@@ -49,19 +49,9 @@ export class PaymentService {
   }
 
   getAllPaymentsForAdmin(): Observable<Payment[]> {
-    return forkJoin([
-      this.http.get<ApiResponse<Payment[]>>(`${this.baseUrl}/api/v1/payments/status/PENDING`),
-      this.http.get<ApiResponse<Payment[]>>(`${this.baseUrl}/api/v1/payments/status/PAID`),
-      this.http.get<ApiResponse<Payment[]>>(`${this.baseUrl}/api/v1/payments/status/FAILED`),
-      this.http.get<ApiResponse<Payment[]>>(`${this.baseUrl}/api/v1/payments/status/REFUNDED`),
-      this.http.get<ApiResponse<Payment[]>>(`${this.baseUrl}/api/v1/payments/status/REFUND_PENDING`)
-    ]).pipe(
-      map((responses) => {
-        const paymentMap = new Map<number, Payment>();
-        responses.flatMap((item) => item.data).forEach((payment) => paymentMap.set(payment.paymentId, payment));
-        return Array.from(paymentMap.values()).sort((a, b) => (b.paymentId ?? 0) - (a.paymentId ?? 0));
-      })
-    );
+    return this.http
+      .get<ApiResponse<Payment[]>>(`${this.baseUrl}/api/v1/admin/payments`)
+      .pipe(map((response) => response.data));
   }
 
   refundPayment(orderId: number, reason: string): Observable<Payment> {
