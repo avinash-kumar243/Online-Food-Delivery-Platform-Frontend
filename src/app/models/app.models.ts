@@ -1,14 +1,12 @@
 import { UserRole } from './auth.models';
 
 export type RestaurantStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
-export type DeliveryPartnerStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+export type DeliveryPartnerStatus = 'PENDING_APPROVAL' | 'VERIFIED' | 'REJECTED';
 export type OrderStatus =
   | 'PLACED'
-  | 'ACCEPTED_BY_RESTAURANT'
   | 'CONFIRMED'
   | 'PREPARING'
   | 'READY_FOR_PICKUP'
-  | 'ACCEPTED_BY_DELIVERY_PARTNER'
   | 'PICKED_UP'
   | 'OUT_FOR_DELIVERY'
   | 'DELIVERED'
@@ -50,6 +48,8 @@ export interface RestaurantOwnerProfile extends User {
 
 export interface DeliveryPartner {
   partnerId: number;
+  agentId?: number;
+  userId?: number;
   fullName: string;
   email: string;
   phone: string;
@@ -64,6 +64,10 @@ export interface DeliveryPartner {
   createdAt?: string;
   address?: string | null;
   status?: DeliveryPartnerStatus;
+  verificationStatus?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedByAdminId?: number | null;
   rejectionReason?: string | null;
 }
 
@@ -82,6 +86,10 @@ export interface Restaurant {
   deliveryRadius: number;
   isOpen: boolean;
   isApproved: boolean;
+  approvalStatus?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedByAdminId?: number | null;
   minOrderAmount: number;
   estimatedDeliveryMin: number;
   imageUrl?: string | null;
@@ -209,6 +217,7 @@ export interface Order {
   discount: number;
   finalAmount: number;
   modeOfPayment: string;
+  paymentStatus?: string | null;
   orderStatus: OrderStatus;
   orderDate: string;
   estimatedDelivery?: string | null;
@@ -287,6 +296,7 @@ export interface DashboardStats {
   pendingRestaurantApprovals?: number;
   pendingDeliveryPartnerApprovals?: number;
   totalPayments?: number;
+  totalReviews?: number;
   refundCount?: number;
 }
 
@@ -304,6 +314,43 @@ export interface AdminUserRecord {
   phone?: string | null;
   isActive?: boolean;
   status?: string;
+}
+
+export interface AdminRestaurantRecord {
+  restaurantId: number;
+  restaurantName: string;
+  ownerId: number;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  ownerPhone?: string | null;
+  cuisine: string;
+  address: string;
+  city: string;
+  phone: string;
+  isOpen: boolean;
+  isApproved: boolean;
+  approvalStatus: string;
+  submittedAt?: string | null;
+  rejectionReason?: string | null;
+  reviewedByAdminId?: number | null;
+  reviewedAt?: string | null;
+}
+
+export interface AdminDeliveryPartnerRecord {
+  agentId: number;
+  userId: number;
+  fullName: string;
+  email?: string | null;
+  phone: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  isAvailable: boolean;
+  isVerified: boolean;
+  verificationStatus: string;
+  submittedAt?: string | null;
+  rejectionReason?: string | null;
+  reviewedByAdminId?: number | null;
+  reviewedAt?: string | null;
 }
 
 export interface ShellNavItem {
