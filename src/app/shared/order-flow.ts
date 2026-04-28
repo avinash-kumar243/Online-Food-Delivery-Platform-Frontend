@@ -3,11 +3,9 @@ import { UserRole } from '../models/auth.models';
 
 export const ORDER_FLOW: OrderStatus[] = [
   'PLACED',
-  'ACCEPTED_BY_RESTAURANT',
   'CONFIRMED',
   'PREPARING',
   'READY_FOR_PICKUP',
-  'ACCEPTED_BY_DELIVERY_PARTNER',
   'PICKED_UP',
   'OUT_FOR_DELIVERY',
   'DELIVERED',
@@ -16,11 +14,9 @@ export const ORDER_FLOW: OrderStatus[] = [
 
 export const ORDER_LABELS: Record<OrderStatus, string> = {
   PLACED: 'Placed',
-  ACCEPTED_BY_RESTAURANT: 'Accepted by restaurant',
   CONFIRMED: 'Confirmed',
   PREPARING: 'Preparing',
   READY_FOR_PICKUP: 'Ready for pickup',
-  ACCEPTED_BY_DELIVERY_PARTNER: 'Accepted by delivery partner',
   PICKED_UP: 'Picked up',
   OUT_FOR_DELIVERY: 'Out for delivery',
   DELIVERED: 'Delivered',
@@ -29,8 +25,8 @@ export const ORDER_LABELS: Record<OrderStatus, string> = {
 
 const TRANSITIONS: Record<UserRole, OrderStatus[]> = {
   CUSTOMER: [],
-  RESTAURANT_OWNER: ['CONFIRMED', 'PREPARING'],
-  DELIVERY_PARTNER: ['PICKED_UP', 'DELIVERED'],
+  RESTAURANT_OWNER: ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'],
+  DELIVERY_PARTNER: ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED'],
   ADMIN: []
 };
 
@@ -44,10 +40,6 @@ export function getAllowedNextStatuses(role: UserRole, currentStatus: OrderStatu
   }
 
   if (currentStatus === 'READY_FOR_PICKUP' && role === 'DELIVERY_PARTNER') {
-    return ['ACCEPTED_BY_DELIVERY_PARTNER'];
-  }
-
-  if (currentStatus === 'ACCEPTED_BY_DELIVERY_PARTNER' && role === 'DELIVERY_PARTNER') {
     return ['PICKED_UP'];
   }
 
