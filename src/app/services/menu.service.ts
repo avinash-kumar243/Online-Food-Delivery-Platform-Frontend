@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { MenuCategoryPayload, MenuItem, MenuItemPayload, RestaurantMenu } from '../models/app.models';
+import { MenuCategory, MenuCategoryPayload, MenuItem, MenuItemPayload, RestaurantMenu } from '../models/app.models';
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
@@ -45,8 +45,8 @@ export class MenuService {
     });
   }
 
-  addCategory(payload: MenuCategoryPayload) {
-    return this.http.post(`${this.baseUrl}/menu`, {
+  addCategory(payload: MenuCategoryPayload): Observable<MenuCategory> {
+    return this.http.post<MenuCategory>(`${this.baseUrl}/menu`, {
       type: 'CATEGORY',
       category: payload
     });
