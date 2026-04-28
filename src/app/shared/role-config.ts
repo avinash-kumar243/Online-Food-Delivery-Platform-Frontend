@@ -26,10 +26,15 @@ export const ROLE_NAV_ITEMS: Record<UserRole, ShellNavItem[]> = {
   ADMIN: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: 'Home' },
     { label: 'Users', path: '/admin/users', icon: 'Users' },
-    { label: 'Restaurant Approvals', path: '/admin/restaurants/approvals', icon: 'Store' },
-    { label: 'Delivery Approvals', path: '/admin/delivery-partners/approvals', icon: 'Shield' },
+    { label: 'Restaurant Requests', path: '/admin/restaurants/pending', icon: 'Store' },
+    { label: 'Delivery Requests', path: '/admin/delivery-partners/pending', icon: 'Shield' },
+    { label: 'Restaurants', path: '/admin/restaurants', icon: 'Store' },
+    { label: 'Delivery Partners', path: '/admin/delivery-partners', icon: 'Scooter' },
     { label: 'Orders', path: '/admin/orders', icon: 'Order' },
-    { label: 'Payments', path: '/admin/payments', icon: 'Wallet' }
+    { label: 'Payments', path: '/admin/payments', icon: 'Wallet' },
+    { label: 'Reviews', path: '/admin/reviews', icon: 'Review' },
+    { label: 'Notifications', path: '/admin/notifications', icon: 'Bell' },
+    { label: 'Analytics', path: '/admin/analytics', icon: 'Trend' }
   ]
 };
 
