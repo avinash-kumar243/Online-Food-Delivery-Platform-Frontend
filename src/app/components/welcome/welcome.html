@@ -9,7 +9,10 @@
   <nav class="hero-nav">
     <div class="nav-container">
       <h1 class="logo">QuickBite</h1>
-      <button class="nav-btn" (click)="goToCustomer()">Go to Customer</button>
+      <div style="display:flex;gap:12px">
+        <button class="nav-btn" (click)="goToCustomer()">Go to Customer</button>
+        <button class="nav-btn" (click)="navigateToRole('admin')">Admin</button>
+      </div>
     </div>
   </nav>
   <div class="hero-content">
