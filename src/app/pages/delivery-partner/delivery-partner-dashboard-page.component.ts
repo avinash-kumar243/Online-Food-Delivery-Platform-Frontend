@@ -2,36 +2,51 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { LoaderComponent } from '../../components/shared/loader.component';
+import { DeliveryPartner } from '../../models/app.models';
+import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { NotificationService } from '../../services/notification.service';
-import { DeliveryPartner } from '../../models/app.models';
-import { getErrorMessage } from '../../services/api.utils';
 
 @Component({
   selector: 'app-delivery-partner-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, LoaderComponent],
   template: `
     <section class="section-header">
       <div>
         <span class="dashboard-kicker">Delivery partner</span>
         <h1>Stay online, accept trips, and close deliveries smoothly.</h1>
       </div>
-      <a routerLink="/delivery-partner/available-orders" class="primary-btn">Available orders</a>
+      <a routerLink="/delivery-partner/register" class="secondary-btn">Update profile</a>
     </section>
+
+    <app-loader *ngIf="loading()"></app-loader>
 
     <section class="surface-card hero-card" *ngIf="profile() as profile">
       <div>
-        <span class="dashboard-kicker">{{ profile.isVerified ? 'APPROVED' : 'PENDING_APPROVAL' }}</span>
+        <span class="dashboard-kicker">{{ profile.status || 'PENDING_APPROVAL' }}</span>
         <h2>{{ profile.fullName }}</h2>
-        <p class="dashboard-subtitle">{{ profile.vehicleType || 'Vehicle pending' }} • {{ profile.vehicleNumber || 'No registration yet' }}</p>
+        <p class="dashboard-subtitle">{{ profile.vehicleType || 'Vehicle pending' }} - {{ profile.vehicleNumber || 'No registration yet' }}</p>
+        <p class="dashboard-subtitle" *ngIf="profile.rejectionReason">Admin feedback: {{ profile.rejectionReason }}</p>
       </div>
-      <button type="button" class="ghost-btn" [disabled]="!profile.isVerified" (click)="toggle(profile)">{{ profile.isOnline ? 'Go offline' : 'Go online' }}</button>
+      <div class="actions">
+        <a routerLink="/delivery-partner/available-orders" class="primary-btn" [class.disabled-link]="!profile.isVerified || !profile.isOnline">Available orders</a>
+        <button type="button" class="ghost-btn" [disabled]="!profile.isVerified" (click)="toggle(profile)">
+          {{ profile.isOnline ? 'Go offline' : 'Go online' }}
+        </button>
+      </div>
     </section>
+
+    <section *ngIf="!loading() && !profile() && !error()" class="empty-state">No delivery profile found yet. Register your vehicle and verification details to continue.</section>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
   `,
-  styles: [`.hero-card{padding:24px}`],
+  styles: [`
+    .hero-card { padding: 24px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .disabled-link { pointer-events: none; opacity: 0.6; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DeliveryPartnerDashboardPageComponent {
@@ -40,15 +55,29 @@ export class DeliveryPartnerDashboardPageComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly loading = signal(true);
   readonly profile = signal<DeliveryPartner | null>(null);
   readonly error = signal('');
 
   constructor() {
-    const partnerId = this.authService.getCurrentUser()?.id;
-    if (!partnerId) return;
-    this.deliveryService.getMyDeliveryProfile(partnerId)
+    const userId = this.authService.getCurrentUser()?.id;
+    if (!userId) {
+      this.loading.set(false);
+      return;
+    }
+
+    this.deliveryService.getMyDeliveryProfile(userId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: (profile) => this.profile.set(profile), error: (error) => this.error.set(getErrorMessage(error)) });
+      .subscribe({
+        next: (profile) => {
+          this.profile.set(profile);
+          this.loading.set(false);
+        },
+        error: (error) => {
+          this.error.set(getErrorMessage(error));
+          this.loading.set(false);
+        }
+      });
   }
 
   toggle(profile: DeliveryPartner): void {
