@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Order, OrderStatus, PlaceOrderRequest } from '../models/app.models';
 
@@ -26,15 +26,15 @@ export class OrderService {
   }
 
   getAvailableDeliveryOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.baseUrl}/orders/available`);
+    return this.http.get<Order[]>(`${this.baseUrl}/orders/delivery/available`);
   }
 
   acceptDeliveryOrder(orderId: number, deliveryAgentId: number): Observable<Order> {
     return this.http.put<Order>(`${this.baseUrl}/orders/${orderId}/assign-agent`, { deliveryAgentId });
   }
 
-  getDeliveryPartnerOrders(deliveryPartnerId: number): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.baseUrl}/orders/delivery-agent/${deliveryPartnerId}`);
+  getDeliveryPartnerOrders(agentId: number): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.baseUrl}/orders/agent/${agentId}`);
   }
 
   updateOrderStatus(orderId: number, orderStatus: OrderStatus): Observable<Order> {
@@ -42,7 +42,6 @@ export class OrderService {
   }
 
   getAllOrdersForAdmin(): Observable<Order[]> {
-    // TODO: backend needs a complete admin orders listing endpoint. Using active orders as a temporary best-effort feed.
-    return this.http.get<Order[]>(`${this.baseUrl}/orders/active`);
+    return this.http.get<Order[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/orders`);
   }
 }
