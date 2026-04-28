@@ -1,53 +1,123 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map, throwError } from 'rxjs';
-import { AdminUserRecord, DashboardStats } from '../models/app.models';
-import { OrderService } from './order.service';
-import { PaymentService } from './payment.service';
-import { RestaurantService } from './restaurant.service';
+import { Observable, forkJoin, map } from 'rxjs';
+import { environment } from '../../environments/environment';
+import {
+  ApiResponse,
+  AdminDeliveryPartnerRecord,
+  AdminRestaurantRecord,
+  AdminUserRecord,
+  DashboardStats,
+  Order,
+  Payment
+} from '../models/app.models';
+import { UserRole } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
-  private readonly orderService = inject(OrderService);
-  private readonly paymentService = inject(PaymentService);
-  private readonly restaurantService = inject(RestaurantService);
+  private readonly http = inject(HttpClient);
+  private readonly gatewayBaseUrl = environment.apiGatewayBaseUrl;
 
   getDashboardStats(): Observable<DashboardStats> {
     return forkJoin({
-      orders: this.orderService.getAllOrdersForAdmin(),
-      payments: this.paymentService.getAllPaymentsForAdmin(),
-      restaurants: this.restaurantService.getApprovedRestaurants()
+      users: this.getUsers(),
+      restaurants: this.getAllRestaurants(),
+      pendingRestaurants: this.getPendingRestaurants(),
+      pendingAgents: this.getPendingDeliveryPartners(),
+      orders: this.getAllOrders(),
+      payments: this.getAllPayments()
     }).pipe(
-      map(({ orders, payments, restaurants }) => ({
+      map(({ users, restaurants, pendingRestaurants, pendingAgents, orders, payments }) => ({
+        totalCustomers: users.filter((user) => user.role === 'CUSTOMER').length,
+        totalRestaurantOwners: users.filter((user) => user.role === 'RESTAURANT_OWNER').length,
+        totalDeliveryPartners: users.filter((user) => user.role === 'DELIVERY_PARTNER').length,
+        totalRestaurants: restaurants.length,
+        pendingRestaurantApprovals: pendingRestaurants.length,
+        pendingDeliveryPartnerApprovals: pendingAgents.length,
         totalOrders: orders.length,
-        totalRevenue: payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + Number(payment.amount), 0),
+        totalRevenue: payments.filter((payment) => payment.status === 'PAID').reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+        pendingOrders: orders.filter((order) => ['PLACED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(order.orderStatus)).length,
+        completedOrders: orders.filter((order) => order.orderStatus === 'DELIVERED').length,
         totalPayments: payments.length,
-        refundCount: payments.filter((payment) => payment.status === 'REFUNDED').length,
-        totalRestaurants: restaurants.length
+        totalReviews: 0
       }))
     );
   }
 
-  getUsers(): Observable<AdminUserRecord[]> {
-    // TODO: backend needs an admin user-management endpoint to list platform users.
-    return throwError(() => new Error('User management endpoint is not available in backend yet.'));
+  getUsers(role?: UserRole): Observable<AdminUserRecord[]> {
+    const url = role
+      ? `${this.gatewayBaseUrl}/api/v1/admin/users/role/${role}`
+      : `${this.gatewayBaseUrl}/api/v1/admin/users`;
+    return this.http.get<Array<{
+      userId: number;
+      fullName: string;
+      email: string;
+      phone?: string | null;
+      role: UserRole;
+      status: string;
+      isActive: boolean;
+    }>>(url).pipe(
+      map((items) => items.map((item) => ({
+        id: item.userId,
+        fullName: item.fullName,
+        email: item.email,
+        phone: item.phone,
+        role: item.role,
+        status: item.status,
+        isActive: item.isActive
+      })))
+    );
   }
 
-  suspendUser(_userId: number): Observable<void> {
-    // TODO: backend needs an admin suspend user endpoint.
-    return throwError(() => new Error('Suspend user endpoint is not available in backend yet.'));
+  suspendUser(userId: number, role: UserRole): Observable<void> {
+    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/users/${userId}/suspend?role=${role}`, {});
   }
 
-  reactivateUser(_userId: number): Observable<void> {
-    // TODO: backend needs an admin reactivate user endpoint.
-    return throwError(() => new Error('Reactivate user endpoint is not available in backend yet.'));
+  reactivateUser(userId: number, role: UserRole): Observable<void> {
+    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/users/${userId}/reactivate?role=${role}`, {});
   }
 
-  deleteUser(_userId: number): Observable<void> {
-    // TODO: backend needs an admin delete user endpoint.
-    return throwError(() => new Error('Delete user endpoint is not available in backend yet.'));
+  deleteUser(userId: number, role: UserRole): Observable<void> {
+    return this.http.delete<void>(`${this.gatewayBaseUrl}/api/v1/admin/users/${userId}?role=${role}`);
   }
 
-  getPlatformStats(): Observable<DashboardStats> {
-    return this.getDashboardStats();
+  getPendingRestaurants(): Observable<AdminRestaurantRecord[]> {
+    return this.http.get<AdminRestaurantRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/pending`);
+  }
+
+  getAllRestaurants(): Observable<AdminRestaurantRecord[]> {
+    return this.http.get<AdminRestaurantRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/all`);
+  }
+
+  approveRestaurant(restaurantId: number, adminId: number): Observable<void> {
+    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/approve`, { adminId });
+  }
+
+  rejectRestaurant(restaurantId: number, adminId: number, feedback: string): Observable<void> {
+    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/reject`, { adminId, feedback });
+  }
+
+  getPendingDeliveryPartners(): Observable<AdminDeliveryPartnerRecord[]> {
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/agents/pending`);
+  }
+
+  getAllDeliveryPartners(): Observable<AdminDeliveryPartnerRecord[]> {
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/agents/all`);
+  }
+
+  approveDeliveryPartner(agentId: number, adminId: number): Observable<void> {
+    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/agents/${agentId}/verify`, { adminId });
+  }
+
+  rejectDeliveryPartner(agentId: number, adminId: number, feedback: string): Observable<void> {
+    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/agents/${agentId}/reject`, { adminId, feedback });
+  }
+
+  getAllOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.gatewayBaseUrl}/api/v1/admin/orders`);
+  }
+
+  getAllPayments(): Observable<Payment[]> {
+    return this.http.get<ApiResponse<Payment[]>>(`${this.gatewayBaseUrl}/api/v1/admin/payments`).pipe(map((response) => response.data));
   }
 }
