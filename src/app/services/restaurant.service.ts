@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Restaurant, RestaurantRegistrationRequest } from '../models/app.models';
+import { AdminRestaurantRecord, Restaurant, RestaurantRegistrationRequest } from '../models/app.models';
 
 @Injectable({ providedIn: 'root' })
 export class RestaurantService {
@@ -17,24 +17,12 @@ export class RestaurantService {
     const query = params.toString();
     const url = query ? `${this.baseUrl}/restaurants/search?${query}` : `${this.baseUrl}/restaurants/search`;
 
-    return this.http.get<Restaurant[]>(url).pipe(
-      map((items) =>
-        items
-          .filter((item) => item.isApproved)
-          .map((item) => ({
-            ...item,
-            status: item.isApproved ? 'APPROVED' : 'PENDING_APPROVAL'
-          }))
-      )
-    );
+    return this.http.get<Restaurant[]>(url).pipe(map((items) => items.map((item) => this.withStatus(item))));
   }
 
   getRestaurantById(id: number): Observable<Restaurant> {
     return this.http.get<Restaurant>(`${this.baseUrl}/restaurants/${id}`).pipe(
-      map((item) => ({
-        ...item,
-        status: item.isApproved ? 'APPROVED' : 'PENDING_APPROVAL'
-      }))
+      map((item) => this.withStatus(item))
     );
   }
 
@@ -44,7 +32,7 @@ export class RestaurantService {
 
   getMyRestaurant(ownerId: number): Observable<Restaurant | null> {
     return this.http.get<Restaurant[]>(`${this.baseUrl}/restaurants/owner/${ownerId}`).pipe(
-      map((restaurants) => restaurants[0] ?? null)
+      map((restaurants) => restaurants.map((restaurant) => this.withStatus(restaurant))[0] ?? null)
     );
   }
 
@@ -52,18 +40,20 @@ export class RestaurantService {
     return this.http.get<Restaurant[]>(`${this.baseUrl}/restaurants/owner/${ownerId}`);
   }
 
-  getPendingRestaurantsForAdmin(): Observable<Restaurant[]> {
-    // TODO: backend needs an admin-facing list endpoint for all/pending restaurants.
-    return throwError(() => new Error('Pending restaurant approval endpoint is not available in backend yet.'));
+  getPendingRestaurantsForAdmin(): Observable<AdminRestaurantRecord[]> {
+    return this.http.get<AdminRestaurantRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/pending`);
   }
 
-  approveRestaurant(restaurantId: number): Observable<Restaurant> {
-    return this.http.patch<Restaurant>(`${this.baseUrl}/restaurants/${restaurantId}/approve`, { approved: true });
+  getAllRestaurantsForAdmin(): Observable<AdminRestaurantRecord[]> {
+    return this.http.get<AdminRestaurantRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/all`);
   }
 
-  rejectRestaurant(restaurantId: number, _reason: string): Observable<Restaurant> {
-    // TODO: backend currently supports only approved=true/false and no rejection feedback field.
-    return this.http.patch<Restaurant>(`${this.baseUrl}/restaurants/${restaurantId}/approve`, { approved: false });
+  approveRestaurant(restaurantId: number, adminId: number): Observable<void> {
+    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/approve`, { adminId });
+  }
+
+  rejectRestaurant(restaurantId: number, adminId: number, feedback: string): Observable<void> {
+    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/reject`, { adminId, feedback });
   }
 
   updateRestaurantStatus(restaurantId: number, open: boolean): Observable<Restaurant> {
@@ -71,6 +61,17 @@ export class RestaurantService {
   }
 
   searchNearby(latitude: number, longitude: number): Observable<Restaurant[]> {
-    return this.http.get<Restaurant[]>(`${this.baseUrl}/restaurants/nearby?latitude=${latitude}&longitude=${longitude}`);
+    return this.http.get<Restaurant[]>(`${this.baseUrl}/restaurants/nearby?lat=${latitude}&lng=${longitude}&radiusKm=5`);
+  }
+
+  private withStatus(restaurant: Restaurant): Restaurant {
+    return {
+      ...restaurant,
+      status: restaurant.approvalStatus === 'REJECTED'
+        ? 'REJECTED'
+        : restaurant.isApproved
+          ? 'APPROVED'
+          : 'PENDING_APPROVAL'
+    };
   }
 }
