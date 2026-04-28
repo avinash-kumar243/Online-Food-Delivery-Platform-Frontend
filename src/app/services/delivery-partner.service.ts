@@ -1,67 +1,103 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, throwError } from 'rxjs';
-import { DeliveryPartner, DeliveryRegistrationRequest, DashboardStats } from '../models/app.models';
-import { ProfileService } from './profile.service';
-import { OrderService } from './order.service';
+import { Observable, map, switchMap } from 'rxjs';
+import { environment } from '../../environments/environment';
+import {
+  AdminDeliveryPartnerRecord,
+  DeliveryPartner,
+  DeliveryRegistrationRequest
+} from '../models/app.models';
+
+interface DeliveryAgentApiResponse {
+  agentId: number;
+  userId: number;
+  fullName: string;
+  phone: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  currentLatitude: number;
+  currentLongitude: number;
+  isAvailable: boolean;
+  isVerified: boolean;
+  verificationStatus: string;
+  avgRating: number;
+  totalDeliveries: number;
+  activeOrderId?: number | null;
+  rejectionReason?: string | null;
+  reviewedByAdminId?: number | null;
+  reviewedAt?: string | null;
+  submittedAt?: string | null;
+}
 
 @Injectable({ providedIn: 'root' })
 export class DeliveryPartnerService {
-  private readonly profileService = inject(ProfileService);
-  private readonly orderService = inject(OrderService);
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = environment.deliveryBaseUrl;
 
-  registerDeliveryPartner(payload: DeliveryRegistrationRequest): Observable<DeliveryPartner> {
-    // TODO: backend profile endpoint does not currently persist address or document uploads.
-    return this.profileService.updateDeliveryPartnerProfile(payload.partnerId, {
+  registerDeliveryPartner(payload: DeliveryRegistrationRequest, fullName: string, phone: string): Observable<DeliveryPartner> {
+    return this.http.post<DeliveryAgentApiResponse>(`${this.baseUrl}/agents/register`, {
+      userId: payload.partnerId,
+      fullName,
+      phone,
       vehicleType: payload.vehicleType,
       vehicleNumber: payload.vehicleNumber,
-      licenseNumber: payload.licenseNumber,
-      isVerified: false,
-      isOnline: false
-    });
+      currentLatitude: 0,
+      currentLongitude: 0
+    }).pipe(map((response) => this.toPartner(response)));
   }
 
   getMyDeliveryProfile(partnerId: number): Observable<DeliveryPartner> {
-    return this.profileService.getDeliveryPartnerProfile(partnerId).pipe(
-      map((profile) => ({
-        ...profile,
-        status: profile.isVerified ? 'APPROVED' : 'PENDING_APPROVAL'
-      }))
+    return this.http.get<DeliveryAgentApiResponse>(`${this.baseUrl}/agents/user/${partnerId}`).pipe(map((response) => this.toPartner(response)));
+  }
+
+  updateOnlineStatus(agentId: number, isOnline: boolean): Observable<DeliveryPartner> {
+    return this.http.put<{ agentId: number; available: boolean; activeOrderId?: number | null }>(
+      `${this.baseUrl}/agents/${agentId}/availability?available=${isOnline}`,
+      {}
+    ).pipe(switchMap(() => this.http.get<DeliveryAgentApiResponse>(`${this.baseUrl}/agents/${agentId}`)), map((response) => this.toPartner(response)));
+  }
+
+  acceptOrder(agentId: number, orderId: number): Observable<DeliveryPartner> {
+    return this.http.post<DeliveryAgentApiResponse>(`${this.baseUrl}/agents/${agentId}/accept-order/${orderId}`, {}).pipe(
+      map((response) => this.toPartner(response))
     );
   }
 
-  updateOnlineStatus(partnerId: number, isOnline: boolean): Observable<DeliveryPartner> {
-    return this.profileService.updateDeliveryPartnerProfile(partnerId, { isOnline });
+  getPendingDeliveryPartnersForAdmin(): Observable<AdminDeliveryPartnerRecord[]> {
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/pending`);
   }
 
-  getPendingDeliveryPartnersForAdmin(): Observable<DeliveryPartner[]> {
-    // TODO: backend needs an admin-facing list endpoint for delivery partner approvals.
-    return throwError(() => new Error('Pending delivery partner approval endpoint is not available in backend yet.'));
+  getAllDeliveryPartnersForAdmin(): Observable<AdminDeliveryPartnerRecord[]> {
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/all`);
   }
 
-  approveDeliveryPartner(_partnerId: number): Observable<DeliveryPartner> {
-    // TODO: backend needs an admin approval endpoint for delivery partners.
-    return throwError(() => new Error('Delivery partner approval endpoint is not available in backend yet.'));
+  approveDeliveryPartner(agentId: number, adminId: number): Observable<void> {
+    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/${agentId}/verify`, { adminId });
   }
 
-  rejectDeliveryPartner(_partnerId: number, _reason: string): Observable<DeliveryPartner> {
-    // TODO: backend needs an admin rejection endpoint with feedback support for delivery partners.
-    return throwError(() => new Error('Delivery partner rejection endpoint is not available in backend yet.'));
+  rejectDeliveryPartner(agentId: number, adminId: number, feedback: string): Observable<void> {
+    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/${agentId}/reject`, { adminId, feedback });
   }
 
-  getDeliveryStats(partnerId: number): Observable<DashboardStats> {
-    return this.orderService.getDeliveryPartnerOrders(partnerId).pipe(
-      map((orders) => {
-        const completed = orders.filter((order) => order.orderStatus === 'DELIVERED');
-        return {
-          totalDeliveries: orders.length,
-          completedOrders: completed.length,
-          todayDeliveries: completed.filter((order) => new Date(order.orderDate).toDateString() === new Date().toDateString()).length,
-          totalEarnings: completed.reduce((sum, order) => sum + Number(order.finalAmount || 0) * 0.1, 0),
-          todayEarnings: completed
-            .filter((order) => new Date(order.orderDate).toDateString() === new Date().toDateString())
-            .reduce((sum, order) => sum + Number(order.finalAmount || 0) * 0.1, 0)
-        };
-      })
-    );
+  private toPartner(response: DeliveryAgentApiResponse): DeliveryPartner {
+    return {
+      partnerId: response.agentId,
+      agentId: response.agentId,
+      userId: response.userId,
+      fullName: response.fullName,
+      email: '',
+      phone: response.phone,
+      vehicleType: response.vehicleType,
+      vehicleNumber: response.vehicleNumber,
+      isVerified: response.isVerified,
+      isOnline: response.isAvailable,
+      verificationStatus: response.verificationStatus,
+      status: response.verificationStatus === 'REJECTED' ? 'REJECTED' : response.isVerified ? 'VERIFIED' : 'PENDING_APPROVAL',
+      rejectionReason: response.rejectionReason,
+      reviewedByAdminId: response.reviewedByAdminId ?? null,
+      reviewedAt: response.reviewedAt ?? null,
+      submittedAt: response.submittedAt ?? null,
+      rating: response.avgRating
+    };
   }
 }
