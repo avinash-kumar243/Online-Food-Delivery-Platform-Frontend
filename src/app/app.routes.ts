@@ -7,8 +7,15 @@ import { AppShellComponent } from './components/shell/app-shell.component';
 import { authGuard } from './guards/auth.guard';
 import { dashboardRoleGuard } from './guards/dashboard-role.guard';
 import { DashboardRedirectComponent } from './pages/dashboard-redirect/dashboard-redirect.component';
+import { AdminAnalyticsPageComponent } from './pages/admin/admin-analytics-page.component';
+import { AdminAuthPageComponent } from './pages/admin/admin-auth-page.component';
 import { AdminDashboardPageComponent } from './pages/admin/admin-dashboard-page.component';
+import { AdminDeliveryPartnersPageComponent } from './pages/admin/admin-delivery-partners-page.component';
+import { AdminOrdersPageComponent } from './pages/admin/admin-orders-page.component';
+import { AdminPaymentsPageComponent } from './pages/admin/admin-payments-page.component';
 import { AdminPlaceholderPageComponent } from './pages/admin/admin-placeholder-page.component';
+import { AdminRestaurantsPageComponent } from './pages/admin/admin-restaurants-page.component';
+import { AdminUsersPageComponent } from './pages/admin/admin-users-page.component';
 import { CustomerCartPageComponent } from './pages/customer/customer-cart-page.component';
 import { CustomerDashboardPageComponent } from './pages/customer/customer-dashboard-page.component';
 import { CustomerOrderDetailPageComponent } from './pages/customer/customer-order-detail-page.component';
@@ -35,11 +42,13 @@ export const routes: Routes = [
   { path: 'customer/auth', component: CustomerAuthComponent },
   { path: 'restaurant/auth', component: RestaurantAuthComponent },
   { path: 'delivery-partner/auth', component: DeliveryPartnerAuthComponent },
+  { path: 'admin/auth', component: AdminAuthPageComponent },
 
   { path: 'dashboard', component: DashboardRedirectComponent },
   { path: 'dashboard/customer', redirectTo: '/customer/dashboard', pathMatch: 'full' },
   { path: 'dashboard/restaurant-owner', redirectTo: '/restaurant-owner/dashboard', pathMatch: 'full' },
   { path: 'dashboard/delivery-partner', redirectTo: '/delivery-partner/dashboard', pathMatch: 'full' },
+  { path: 'dashboard/admin', redirectTo: '/admin/dashboard', pathMatch: 'full' },
   {
     path: 'customer',
     component: AppShellComponent,
@@ -93,51 +102,32 @@ export const routes: Routes = [
     data: { role: 'ADMIN' },
     children: [
       { path: 'dashboard', component: AdminDashboardPageComponent },
+      { path: 'users', component: AdminUsersPageComponent },
+      { path: 'restaurants', component: AdminRestaurantsPageComponent, data: { pendingOnly: false } },
+      { path: 'restaurants/pending', component: AdminRestaurantsPageComponent, data: { pendingOnly: true } },
+      { path: 'delivery-partners', component: AdminDeliveryPartnersPageComponent, data: { pendingOnly: false } },
+      { path: 'delivery-partners/pending', component: AdminDeliveryPartnersPageComponent, data: { pendingOnly: true } },
+      { path: 'orders', component: AdminOrdersPageComponent },
+      { path: 'payments', component: AdminPaymentsPageComponent },
       {
-        path: 'users',
+        path: 'reviews',
         component: AdminPlaceholderPageComponent,
         data: {
-          title: 'User management',
-          description: 'Search, suspend, reactivate, and delete users once admin endpoints are available.',
-          note: 'Backend TODO: add platform user listing and moderation endpoints.'
+          title: 'Review moderation',
+          description: 'Moderate platform reviews from the review service.',
+          note: 'This repo does not currently include a review-service, so there is no live backend API to bind here yet.'
         }
       },
       {
-        path: 'restaurants/approvals',
+        path: 'notifications',
         component: AdminPlaceholderPageComponent,
         data: {
-          title: 'Restaurant approvals',
-          description: 'Review and approve submitted restaurant registrations.',
-          note: 'Backend TODO: add admin endpoint to list pending restaurants and persist rejection feedback.'
+          title: 'Notifications',
+          description: 'Send platform-wide or targeted operational notifications.',
+          note: 'This repo does not currently include a notification-service, so there is no live backend API to bind here yet.'
         }
       },
-      {
-        path: 'delivery-partners/approvals',
-        component: AdminPlaceholderPageComponent,
-        data: {
-          title: 'Delivery approvals',
-          description: 'Review delivery partner profiles and approve or reject them.',
-          note: 'Backend TODO: add admin endpoint to list and approve delivery partners.'
-        }
-      },
-      {
-        path: 'orders',
-        component: AdminPlaceholderPageComponent,
-        data: {
-          title: 'Platform orders',
-          description: 'Centralized order management across restaurants and delivery partners.',
-          note: 'Currently backed only by the active orders feed. Backend TODO: add complete admin order listing and filtering.'
-        }
-      },
-      {
-        path: 'payments',
-        component: AdminPlaceholderPageComponent,
-        data: {
-          title: 'Payment operations',
-          description: 'Review payment transactions and initiate refunds.',
-          note: 'Refund endpoint exists. Backend TODO: add enriched admin payment list with customer and order search metadata.'
-        }
-      },
+      { path: 'analytics', component: AdminAnalyticsPageComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
