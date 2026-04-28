@@ -352,10 +352,10 @@ export class DashboardService {
         .get<DeliveryPartnerProfileDto>(`${this.authBaseUrl}/auth/delivery-partner/profile/${userId}`)
         .pipe(catchError(() => of(null))),
       assignments: this.http
-        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/delivery-agent/${userId}`)
+        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/agent/${userId}`)
         .pipe(catchError(() => of([]))),
       availableOrders: this.http
-        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/available`)
+        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/delivery/available`)
         .pipe(catchError(() => of([]))),
       restaurants: this.http
         .get<RestaurantResponseDto[]>(`${this.restaurantBaseUrl}/restaurants/search`)
