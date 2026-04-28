@@ -4,12 +4,12 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { MenuItem, Restaurant } from '../../models/app.models';
+import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { MenuService } from '../../services/menu.service';
 import { NotificationService } from '../../services/notification.service';
 import { RestaurantService } from '../../services/restaurant.service';
-import { MenuItem, Restaurant } from '../../models/app.models';
-import { getErrorMessage } from '../../services/api.utils';
 
 @Component({
   selector: 'app-owner-menu-page',
@@ -33,7 +33,7 @@ import { getErrorMessage } from '../../services/api.utils';
       <article *ngFor="let item of menuItems()" class="surface-card item-card">
         <div>
           <strong>{{ item.name }}</strong>
-          <p>{{ item.categoryName || 'Menu item' }} • Rs {{ item.price }}</p>
+          <p>{{ item.categoryName || 'Menu item' }} - Rs {{ item.price }}</p>
         </div>
         <div class="actions">
           <button type="button" class="ghost-btn" (click)="toggle(item)">{{ item.isAvailable ? 'Mark unavailable' : 'Mark available' }}</button>
@@ -48,10 +48,11 @@ import { getErrorMessage } from '../../services/api.utils';
     </ng-template>
   `,
   styles: [`
-    h1{font-size:clamp(2rem,3vw,3rem)}
-    .item-card{padding:20px;display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .item-card p{margin-top:6px;color:var(--qb-text-muted)}
-    .actions{display:flex;flex-wrap:wrap;gap:10px}
+    h1 { font-size: clamp(2rem, 3vw, 3rem); }
+    .item-card { padding: 20px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    .item-card p { margin-top: 6px; color: var(--qb-text-muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .disabled-link { pointer-events: none; opacity: 0.6; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
