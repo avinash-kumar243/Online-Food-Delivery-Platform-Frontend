@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map } from 'rxjs';
+import { Observable, forkJoin, map, switchMap } from 'rxjs';
 import { CustomerStats, DashboardStats, Restaurant } from '../models/app.models';
 import { OrderService } from './order.service';
 import { PaymentService } from './payment.service';
@@ -49,11 +49,21 @@ export class StatsService {
   }
 
   getDeliveryPartnerStats(partnerId: number): Observable<DashboardStats> {
-    return this.deliveryPartnerService.getDeliveryStats(partnerId);
+    return this.deliveryPartnerService.getMyDeliveryProfile(partnerId).pipe(
+      switchMap((profile) => this.orderService.getDeliveryPartnerOrders(profile.agentId ?? profile.partnerId).pipe(
+        map((orders) => ({
+          totalDeliveries: orders.filter((order) => order.orderStatus === 'DELIVERED').length,
+          todayDeliveries: orders.filter((order) => order.orderStatus === 'DELIVERED' && new Date(order.orderDate).toDateString() === new Date().toDateString()).length,
+          totalEarnings: orders.filter((order) => order.orderStatus === 'DELIVERED').reduce((sum, order) => sum + Number(order.finalAmount) * 0.12, 0),
+          todayEarnings: orders.filter((order) => order.orderStatus === 'DELIVERED' && new Date(order.orderDate).toDateString() === new Date().toDateString()).reduce((sum, order) => sum + Number(order.finalAmount) * 0.12, 0),
+          pendingOrders: orders.filter((order) => !['DELIVERED', 'CANCELLED'].includes(order.orderStatus)).length
+        }))
+      ))
+    );
   }
 
   getAdminStats(): Observable<DashboardStats> {
-    return this.adminService.getPlatformStats();
+    return this.adminService.getDashboardStats();
   }
 
   private getFavoriteRestaurants(restaurants: Restaurant[], orders: Array<{ restaurantId: number }>): Restaurant[] {
