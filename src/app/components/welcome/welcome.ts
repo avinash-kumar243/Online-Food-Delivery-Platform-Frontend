@@ -22,6 +22,8 @@ export class Welcome implements OnInit {
       this.router.navigate(['/restaurant/auth']);
     } else if (role === 'delivery-partner') {
       this.router.navigate(['/delivery-partner/auth']);
+    } else if (role === 'admin') {
+      this.router.navigate(['/admin/auth']);
     }
   }
 
