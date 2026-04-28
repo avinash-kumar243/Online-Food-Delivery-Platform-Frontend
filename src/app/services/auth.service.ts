@@ -8,6 +8,11 @@ import { DASHBOARD_ROUTE_BY_ROLE } from '../models/dashboard.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private static readonly TOKEN_KEY = 'token';
+  private static readonly ROLE_KEY = 'userRole';
+  private static readonly EMAIL_KEY = 'authEmail';
+  private static readonly USER_ID_KEY = 'authUserId';
+
   private http = inject(HttpClient);
   private router = inject(Router);
   private backendBaseUrl = environment.authBaseUrl ?? environment.backendBaseUrl;
@@ -43,7 +48,7 @@ export class AuthService {
   }
 
   handleGoogleToken(token: string, userType?: string, userId?: number | null): void {
-    const role = this.normalizeRole(userType) ?? this.normalizeRole(localStorage.getItem('userRole')) ?? this.getRoleFromToken(token);
+    const role = this.normalizeRole(userType) ?? this.normalizeRole(this.storage.getItem(AuthService.ROLE_KEY)) ?? this.getRoleFromToken(token);
     this.persistSession(token, role ?? 'CUSTOMER', undefined, userId ?? undefined);
   }
 
@@ -76,12 +81,9 @@ export class AuthService {
   }
 
   logout() {
-    const userRole = localStorage.getItem('userRole');
+    const userRole = this.storage.getItem(AuthService.ROLE_KEY);
 
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('authEmail');
-    localStorage.removeItem('authUserId');
+    this.clearStoredSession();
     this.currentUserSubject.next(null);
 
     if (userRole === 'ADMIN') {
@@ -96,12 +98,12 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    const token = localStorage.getItem('token');
+    const token = this.storage.getItem(AuthService.TOKEN_KEY);
     return !!token && !this.isTokenExpired(token);
   }
 
   getToken() {
-    return localStorage.getItem('token');
+    return this.storage.getItem(AuthService.TOKEN_KEY);
   }
 
   getUserRole(): UserRole | null {
@@ -122,10 +124,7 @@ export class AuthService {
   }
 
   clearInvalidSession(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('authEmail');
-    localStorage.removeItem('authUserId');
+    this.clearStoredSession();
     this.currentUserSubject.next(null);
   }
 
@@ -140,47 +139,95 @@ export class AuthService {
   }
 
   private persistSession(token: string, role: UserRole, email?: string, id?: number): void {
-    localStorage.setItem('token', token.trim());
-    localStorage.setItem('userRole', role);
+    this.storage.setItem(AuthService.TOKEN_KEY, token.trim());
+    this.storage.setItem(AuthService.ROLE_KEY, role);
 
     const tokenEmail = this.getEmailFromToken(token);
     const resolvedEmail = email ?? tokenEmail;
     if (resolvedEmail) {
-      localStorage.setItem('authEmail', resolvedEmail);
+      this.storage.setItem(AuthService.EMAIL_KEY, resolvedEmail);
     }
 
     const tokenId = this.getIdFromToken(token);
     const resolvedId = id ?? tokenId;
     if (resolvedId !== null && resolvedId !== undefined && Number.isFinite(Number(resolvedId))) {
-      localStorage.setItem('authUserId', String(resolvedId));
+      this.storage.setItem(AuthService.USER_ID_KEY, String(resolvedId));
     }
 
     this.currentUserSubject.next(this.resolveCurrentUser());
   }
 
   private resolveCurrentUser(): CurrentUser | null {
-    const token = localStorage.getItem('token')?.trim();
+    const token = this.storage.getItem(AuthService.TOKEN_KEY)?.trim();
     if (!token || this.isTokenExpired(token)) {
       return null;
     }
 
-    const role = this.normalizeRole(localStorage.getItem('userRole')) ?? this.getRoleFromToken(token);
+    const role = this.normalizeRole(this.storage.getItem(AuthService.ROLE_KEY)) ?? this.getRoleFromToken(token);
     if (!role) {
       return null;
     }
 
-    const storedId = localStorage.getItem('authUserId');
+    const storedId = this.storage.getItem(AuthService.USER_ID_KEY);
     const parsedId = storedId ? Number(storedId) : this.getIdFromToken(token);
 
     return {
       token,
       role,
-      email: localStorage.getItem('authEmail') ?? this.getEmailFromToken(token),
+      email: this.storage.getItem(AuthService.EMAIL_KEY) ?? this.getEmailFromToken(token),
       id: Number.isFinite(parsedId) ? parsedId : null
     };
   }
 
+  private clearStoredSession(): void {
+    this.storage.removeItem(AuthService.TOKEN_KEY);
+    this.storage.removeItem(AuthService.ROLE_KEY);
+    this.storage.removeItem(AuthService.EMAIL_KEY);
+    this.storage.removeItem(AuthService.USER_ID_KEY);
+    localStorage.removeItem(AuthService.TOKEN_KEY);
+    localStorage.removeItem(AuthService.ROLE_KEY);
+    localStorage.removeItem(AuthService.EMAIL_KEY);
+    localStorage.removeItem(AuthService.USER_ID_KEY);
+  }
+
+  private get storage(): Storage {
+    this.migrateLegacySession();
+    return sessionStorage;
+  }
+
+  private migrateLegacySession(): void {
+    if (sessionStorage.getItem(AuthService.TOKEN_KEY)) {
+      return;
+    }
+
+    const legacyToken = localStorage.getItem(AuthService.TOKEN_KEY);
+    if (!legacyToken) {
+      return;
+    }
+
+    const legacyRole = localStorage.getItem(AuthService.ROLE_KEY);
+    const legacyEmail = localStorage.getItem(AuthService.EMAIL_KEY);
+    const legacyUserId = localStorage.getItem(AuthService.USER_ID_KEY);
+
+    sessionStorage.setItem(AuthService.TOKEN_KEY, legacyToken);
+    if (legacyRole) {
+      sessionStorage.setItem(AuthService.ROLE_KEY, legacyRole);
+    }
+    if (legacyEmail) {
+      sessionStorage.setItem(AuthService.EMAIL_KEY, legacyEmail);
+    }
+    if (legacyUserId) {
+      sessionStorage.setItem(AuthService.USER_ID_KEY, legacyUserId);
+    }
+
+    localStorage.removeItem(AuthService.TOKEN_KEY);
+    localStorage.removeItem(AuthService.ROLE_KEY);
+    localStorage.removeItem(AuthService.EMAIL_KEY);
+    localStorage.removeItem(AuthService.USER_ID_KEY);
+  }
+
   private roleFromEndpoint(endpoint: string): UserRole {
+    if (endpoint.includes('/admin/')) return 'ADMIN';
     if (endpoint.includes('/restaurant/')) return 'RESTAURANT_OWNER';
     if (endpoint.includes('/delivery-partner/')) return 'DELIVERY_PARTNER';
     return 'CUSTOMER';
