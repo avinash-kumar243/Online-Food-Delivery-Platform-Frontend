@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Restaurant } from '../../models/app.models';
+import { RESTAURANT_CUISINES } from '../../constants/restaurant-cuisine';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
@@ -29,8 +30,18 @@ import { RestaurantService } from '../../services/restaurant.service';
     <form class="surface-card form-card" [formGroup]="form" (ngSubmit)="submit()">
       <div class="form-grid">
         <label><span>Name</span><input formControlName="name" /></label>
-        <label><span>Cuisine</span><input formControlName="cuisine" /></label>
-        <label><span>Phone</span><input formControlName="phone" /></label>
+        <label>
+          <span>Cuisine</span>
+          <select formControlName="cuisine">
+            <option value="">Select cuisine</option>
+            <option *ngFor="let cuisine of cuisines" [value]="cuisine">{{ cuisine }}</option>
+          </select>
+        </label>
+        <label>
+          <span>Phone</span>
+          <input formControlName="phone" inputmode="numeric" maxlength="10" />
+          <small class="field-error" *ngIf="phoneHasInvalidValue()">Please enter correct phone number</small>
+        </label>
         <label><span>City</span><input formControlName="city" /></label>
         <label><span>Latitude</span><input type="number" formControlName="latitude" /></label>
         <label><span>Longitude</span><input type="number" formControlName="longitude" /></label>
@@ -48,7 +59,8 @@ import { RestaurantService } from '../../services/restaurant.service';
     .form-card { padding: 24px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     label span { display: block; font-weight: 600; margin-bottom: 8px; }
-    input, textarea { width: 100%; border: 1px solid var(--qb-border); border-radius: 14px; padding: 12px 14px; }
+    input, textarea, select { width: 100%; border: 1px solid var(--qb-border); border-radius: 14px; padding: 12px 14px; }
+    .field-error { display: block; margin-top: 8px; color: #d92d20; font-size: 0.9rem; }
     .full { grid-column: 1 / -1; }
     @media (max-width: 860px) { .form-grid { grid-template-columns: 1fr; } }
   `],
@@ -64,6 +76,7 @@ export class RestaurantRegistrationPageComponent {
 
   readonly submitting = signal(false);
   readonly existingRestaurant = signal<Restaurant | null>(null);
+  readonly cuisines = RESTAURANT_CUISINES;
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
     description: [''],
@@ -72,7 +85,7 @@ export class RestaurantRegistrationPageComponent {
     city: ['', Validators.required],
     latitude: [12.9716, Validators.required],
     longitude: [77.5946, Validators.required],
-    phone: ['', [Validators.required, Validators.pattern(/^[0-9+()\- ]{7,20}$/)]],
+    phone: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
     deliveryRadius: [5, [Validators.required, Validators.min(1)]],
     minOrderAmount: [100, [Validators.required, Validators.min(0)]],
     estimatedDeliveryMin: [30, [Validators.required, Validators.min(1)]]
@@ -110,9 +123,15 @@ export class RestaurantRegistrationPageComponent {
       });
   }
 
+  phoneHasInvalidValue(): boolean {
+    const control = this.form.controls.phone;
+    return control.invalid && (control.dirty || control.touched);
+  }
+
   submit(): void {
     const ownerId = this.authService.getCurrentUser()?.id;
     if (!ownerId || this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 
