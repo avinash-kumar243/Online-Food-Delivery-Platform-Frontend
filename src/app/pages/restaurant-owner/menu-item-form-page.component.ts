@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { map, of, switchMap } from 'rxjs';
+import { formatCategoryLabel, getCuisineCategories } from '../../constants/restaurant-cuisine';
 import { AuthService } from '../../services/auth.service';
 import { MenuService } from '../../services/menu.service';
 import { NotificationService } from '../../services/notification.service';
@@ -29,9 +30,9 @@ import { getErrorMessage } from '../../services/api.utils';
         <label><span>Name</span><input formControlName="name" /></label>
         <label>
           <span>Category</span>
-          <select formControlName="categoryId">
-            <option [ngValue]="0">Create new category</option>
-            <option *ngFor="let category of categories()" [ngValue]="category.categoryId">{{ category.name }}</option>
+          <select formControlName="categoryName">
+            <option value="">Select category</option>
+            <option *ngFor="let category of availableCategoryOptions()" [value]="category">{{ formatCategoryName(category) }}</option>
           </select>
         </label>
         <label><span>Price</span><input type="number" formControlName="price" /></label>
@@ -41,10 +42,6 @@ import { getErrorMessage } from '../../services/api.utils';
         <label><span>Tags</span><input formControlName="tags" /></label>
         <label><span>Vegetarian</span><select formControlName="isVeg"><option [ngValue]="true">Veg</option><option [ngValue]="false">Non-veg</option></select></label>
         <label><span>Available</span><select formControlName="isAvailable"><option [ngValue]="true">Available</option><option [ngValue]="false">Unavailable</option></select></label>
-        <label class="full" *ngIf="form.controls.categoryId.value === 0">
-          <span>New category name</span>
-          <input formControlName="categoryName" placeholder="e.g. Snacks, Main Course, Beverages" />
-        </label>
         <label class="full"><span>Description</span><textarea rows="4" formControlName="description"></textarea></label>
       </div>
       <button type="submit" class="primary-btn" [disabled]="submitting() || form.invalid">{{ submitting() ? 'Saving...' : 'Save item' }}</button>
@@ -73,10 +70,10 @@ export class MenuItemFormPageComponent {
   readonly submitting = signal(false);
   readonly restaurant = signal<Restaurant | null>(null);
   readonly categories = signal<MenuCategory[]>([]);
+  readonly availableCategoryOptions = signal<string[]>([]);
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
-    categoryId: [0, Validators.required],
-    categoryName: [''],
+    categoryName: ['', Validators.required],
     description: [''],
     price: [0, [Validators.required, Validators.min(1)]],
     discountedPrice: [0],
@@ -110,9 +107,10 @@ export class MenuItemFormPageComponent {
       .subscribe({
         next: (menu) => {
           this.categories.set(menu.categories);
+          this.availableCategoryOptions.set(this.buildCategoryOptions(menu.categories, this.restaurant()?.cuisine));
           if (!this.itemId) {
             this.form.patchValue({
-              categoryId: menu.categories[0]?.categoryId ?? 0
+              categoryName: this.availableCategoryOptions()[0] ?? ''
             });
           }
 
@@ -123,6 +121,12 @@ export class MenuItemFormPageComponent {
           }
         },
         error: () => {
+          this.availableCategoryOptions.set(this.buildCategoryOptions([], this.restaurant()?.cuisine));
+          if (!this.itemId && this.availableCategoryOptions().length) {
+            this.form.patchValue({
+              categoryName: this.availableCategoryOptions()[0]
+            });
+          }
           if (this.itemId) {
             this.menuService.getMenuItem(this.itemId)
               .pipe(takeUntilDestroyed(this.destroyRef))
@@ -133,10 +137,16 @@ export class MenuItemFormPageComponent {
   }
 
   private patch(item: MenuItem): void {
+    const categoryName = this.categories().find((category) => category.categoryId === item.categoryId)?.name ?? item.categoryName ?? '';
+    const nextOptions = new Set(this.availableCategoryOptions());
+    if (categoryName) {
+      nextOptions.add(categoryName);
+      this.availableCategoryOptions.set(Array.from(nextOptions));
+    }
+
     this.form.patchValue({
       name: item.name,
-      categoryId: item.categoryId,
-      categoryName: '',
+      categoryName,
       description: item.description || '',
       price: item.price,
       discountedPrice: item.discountedPrice || 0,
@@ -152,20 +162,24 @@ export class MenuItemFormPageComponent {
     const restaurant = this.restaurant();
     if (!restaurant || this.form.invalid) return;
 
-    const selectedCategoryId = this.form.controls.categoryId.value;
-    const newCategoryName = this.form.controls.categoryName.value.trim();
-    if (selectedCategoryId === 0 && !newCategoryName) {
-      this.notificationService.error('Enter a category name or choose an existing category.');
+    const selectedCategoryName = this.form.controls.categoryName.value.trim();
+    if (!selectedCategoryName) {
+      this.form.markAllAsTouched();
+      this.notificationService.error('Choose a category for this item.');
       return;
     }
 
     this.submitting.set(true);
-    const categoryId$ = selectedCategoryId > 0
-      ? of(selectedCategoryId)
+    const existingCategoryId = this.categories()
+      .find((category) => category.name.toUpperCase() === selectedCategoryName.toUpperCase())
+      ?.categoryId;
+
+    const categoryId$ = existingCategoryId
+      ? of(existingCategoryId)
       : this.menuService.addCategory({
           restaurantId: restaurant.restaurantId,
-          name: newCategoryName,
-          description: `${newCategoryName} items`,
+          name: selectedCategoryName,
+          description: `${formatCategoryLabel(selectedCategoryName)} items`,
           imageUrl: '',
           displayOrder: this.categories().length
         }).pipe(map((category) => category.categoryId));
@@ -204,5 +218,15 @@ export class MenuItemFormPageComponent {
         this.submitting.set(false);
       }
     });
+  }
+
+  formatCategoryName(category: string): string {
+    return formatCategoryLabel(category);
+  }
+
+  private buildCategoryOptions(categories: MenuCategory[], cuisine?: string | null): string[] {
+    const options = new Set<string>(getCuisineCategories(cuisine));
+    categories.forEach((category) => options.add(category.name));
+    return Array.from(options);
   }
 }
