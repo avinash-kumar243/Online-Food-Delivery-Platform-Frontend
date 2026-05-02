@@ -139,7 +139,7 @@ export class RestaurantDetailPageComponent {
       restaurantId,
       menuItemId: item.itemId,
       name: item.name,
-      price: item.discountedPrice || item.price,
+      price: item.price,
       quantity: 1
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
