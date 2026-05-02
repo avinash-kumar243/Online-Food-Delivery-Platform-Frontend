@@ -9,9 +9,18 @@ import { AuthService } from '../../services/auth.service';
 import { CartService } from '../../services/cart.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
-import { PaymentService } from '../../services/payment.service';
+import { PaymentService, RazorpayOrderPayload } from '../../services/payment.service';
 import { PlaceOrderRequest, Cart } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open(): void;
+      on(event: string, callback: (response: Record<string, unknown>) => void): void;
+    };
+  }
+}
 
 @Component({
   selector: 'app-customer-cart-page',
@@ -41,10 +50,10 @@ import { getErrorMessage } from '../../services/api.utils';
                 <p>Rs {{ item.price }} each</p>
               </div>
               <div class="cart-actions">
-                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.itemId, item.quantity - 1)" [disabled]="item.quantity <= 1">-</button>
+                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.menuItemId, item.quantity - 1)" [disabled]="item.quantity <= 1">-</button>
                 <span>{{ item.quantity }}</span>
-                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.itemId, item.quantity + 1)">+</button>
-                <button type="button" class="ghost-btn" (click)="remove(item.itemId)">Remove</button>
+                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.menuItemId, item.quantity + 1)">+</button>
+                <button type="button" class="ghost-btn" (click)="remove(item.menuItemId)">Remove</button>
               </div>
             </div>
           </div>
@@ -93,6 +102,8 @@ import { getErrorMessage } from '../../services/api.utils';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomerCartPageComponent {
+  private static readonly RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly orderService = inject(OrderService);
@@ -140,14 +151,14 @@ export class CustomerCartPageComponent {
       });
   }
 
-  changeQuantity(itemId: number, quantity: number): void {
+  changeQuantity(menuItemId: number, quantity: number): void {
     if (quantity < 1) {
       return;
     }
 
     const customerId = this.authService.getCurrentUser()?.id;
     if (!customerId) return;
-    this.cartService.updateQuantity(customerId, itemId, quantity)
+    this.cartService.updateQuantityByMenuItem(customerId, menuItemId, quantity)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (cart) => this.cart.set(cart),
@@ -155,8 +166,11 @@ export class CustomerCartPageComponent {
       });
   }
 
-  remove(itemId: number): void {
-    this.cartService.removeItem(itemId)
+  remove(menuItemId: number): void {
+    const customerId = this.authService.getCurrentUser()?.id;
+    if (!customerId) return;
+
+    this.cartService.removeItemByMenuItem(customerId, menuItemId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (cart) => {
@@ -183,7 +197,7 @@ export class CustomerCartPageComponent {
       restaurantId: cart.restaurantId,
       discount: 0,
       modeOfPayment: this.paymentMethod,
-      estimatedDelivery: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+      estimatedDelivery: undefined,
       deliveryAddress: this.deliveryAddress,
       specialInstructions: this.specialInstructions,
       items: cart.items.map((item) => ({
@@ -222,22 +236,21 @@ export class CustomerCartPageComponent {
                   this.notificationService.error(getErrorMessage(error, 'Order placed but COD payment record could not be created.'));
                   this.placingOrder.set(false);
                 }
-              });
+            });
             return;
           }
 
-          // TODO: plug real Razorpay checkout invocation here after backend exposes the frontend checkout contract.
           this.paymentService.createRazorpayOrder({
             orderId: order.orderId,
             customerId,
             amount: order.finalAmount,
+            paymentMode: this.paymentMethod,
             currency: 'INR'
           })
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
-              next: () => {
-                this.notificationService.info('Payment order created. Complete gateway checkout once Razorpay frontend flow is enabled.');
-                finalizeSuccess();
+              next: (paymentOrder) => {
+                this.launchRazorpayCheckout(order.orderId, paymentOrder, finalizeSuccess);
               },
               error: (error: unknown) => {
                 this.notificationService.error(getErrorMessage(error));
@@ -250,5 +263,132 @@ export class CustomerCartPageComponent {
           this.placingOrder.set(false);
         }
       });
+  }
+
+  private launchRazorpayCheckout(
+    orderId: number,
+    paymentOrder: RazorpayOrderPayload,
+    onSuccess: () => void
+  ): void {
+    this.ensureRazorpayLoaded()
+      .then(() => {
+        if (!window.Razorpay) {
+          throw new Error('Razorpay checkout failed to load.');
+        }
+
+        let checkoutCompleted = false;
+
+        const razorpay = new window.Razorpay({
+          key: paymentOrder.keyId,
+          amount: paymentOrder.amount,
+          currency: paymentOrder.currency,
+          name: 'QuickBite',
+          description: `Payment for order #${orderId}`,
+          order_id: paymentOrder.razorpayOrderId,
+          theme: {
+            color: '#ef4444'
+          },
+          modal: {
+            ondismiss: () => {
+              if (!checkoutCompleted) {
+                this.cancelOnlineOrder(orderId, 'Payment was cancelled.');
+              }
+            }
+          },
+          method: this.razorpayMethods(this.paymentMethod),
+          prefill: {
+            name: this.authService.getCurrentUser()?.email?.split('@')[0] ?? 'QuickBite Customer',
+            email: this.authService.getCurrentUser()?.email ?? ''
+          },
+          handler: (response: Record<string, unknown>) => {
+            const razorpayPaymentId = String(response['razorpay_payment_id'] ?? '');
+            const razorpayOrderId = String(response['razorpay_order_id'] ?? '');
+            const razorpaySignature = String(response['razorpay_signature'] ?? '');
+
+            this.paymentService.verifyPayment({
+              orderId,
+              razorpayOrderId,
+              razorpayPaymentId,
+              razorpaySignature
+            })
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe({
+                next: () => {
+                  checkoutCompleted = true;
+                  onSuccess();
+                },
+                error: (error) => {
+                  this.notificationService.error(getErrorMessage(error, 'Payment verification failed.'));
+                  this.cancelOnlineOrder(orderId, '');
+                }
+              });
+          }
+        });
+
+        razorpay.on('payment.failed', () => {
+          if (!checkoutCompleted) {
+            this.cancelOnlineOrder(orderId, 'Payment failed. Please try again.');
+          }
+        });
+
+        razorpay.open();
+      })
+      .catch((error: unknown) => {
+        this.notificationService.error(getErrorMessage(error, 'Unable to open Razorpay checkout.'));
+        this.cancelOnlineOrder(orderId, '');
+      });
+  }
+
+  private ensureRazorpayLoaded(): Promise<void> {
+    if (window.Razorpay) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-razorpay-checkout]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Unable to load Razorpay checkout script.')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = CustomerCartPageComponent.RAZORPAY_SCRIPT_URL;
+      script.async = true;
+      script.dataset['razorpayCheckout'] = 'true';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Unable to load Razorpay checkout script.'));
+      document.body.appendChild(script);
+    });
+  }
+
+  private cancelOnlineOrder(orderId: number, message: string): void {
+    this.orderService.cancelOrder(orderId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (message) {
+            this.notificationService.error(message);
+          }
+          this.placingOrder.set(false);
+        },
+        error: () => {
+          if (message) {
+            this.notificationService.error(message);
+          }
+          this.placingOrder.set(false);
+        }
+      });
+  }
+
+  private razorpayMethods(paymentMethod: 'COD' | 'UPI' | 'CARD' | 'WALLET'): Record<string, boolean> {
+    return {
+      card: paymentMethod === 'CARD',
+      upi: paymentMethod === 'UPI',
+      wallet: paymentMethod === 'WALLET',
+      netbanking: false,
+      emi: false,
+      paylater: false
+    };
   }
 }

@@ -137,8 +137,16 @@ export class RestaurantAuthComponent implements OnInit, OnDestroy {
     this.otpInterval = setInterval(() => {
       if (this.otpTimer > 0) {
         this.otpTimer--;
+        if (this.otpTimer === 0 && this.forgotStep === 'otp') {
+          this.errorMessage = 'Wrong otp. Please send otp again.';
+          this.successMessage = '';
+        }
       } else {
         this.stopOtpTimer();
+        if (this.forgotStep === 'otp') {
+          this.errorMessage = 'Wrong otp. Please send otp again.';
+          this.successMessage = '';
+        }
       }
       this.cdr.detectChanges();
     }, 1000);
@@ -233,6 +241,7 @@ export class RestaurantAuthComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.clearMessages();
     this.sendOtp();
   }
 
@@ -273,9 +282,8 @@ export class RestaurantAuthComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
         error: (err) => {
-          this.errorMessage = err.error?.message || err.message || 'Invalid or expired OTP';
-          this.stopOtpTimer();
-          this.stopResendCooldown();
+          this.errorMessage = err.error?.message || err.message || 'Wrong otp. Please send otp again.';
+          this.successMessage = '';
           this.cdr.detectChanges();
         }
       });
