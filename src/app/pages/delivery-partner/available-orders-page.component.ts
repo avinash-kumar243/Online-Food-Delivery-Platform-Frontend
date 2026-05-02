@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval, startWith, switchMap } from 'rxjs';
 import { LoaderComponent } from '../../components/shared/loader.component';
 import { DeliveryPartner, Order } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
@@ -48,6 +49,8 @@ import { OrderService } from '../../services/order.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AvailableOrdersPageComponent {
+  private static readonly REFRESH_INTERVAL_MS = 5000;
+
   private readonly authService = inject(AuthService);
   private readonly deliveryPartnerService = inject(DeliveryPartnerService);
   private readonly orderService = inject(OrderService);
@@ -77,14 +80,19 @@ export class AvailableOrdersPageComponent {
       .subscribe({
         next: (profile) => {
           this.profile.set(profile);
+          this.error.set('');
           if (!profile.isVerified || !profile.isOnline) {
             this.orders.set([]);
             this.loading.set(false);
             return;
           }
 
-          this.orderService.getAvailableDeliveryOrders()
-            .pipe(takeUntilDestroyed(this.destroyRef))
+          interval(AvailableOrdersPageComponent.REFRESH_INTERVAL_MS)
+            .pipe(
+              startWith(0),
+              switchMap(() => this.orderService.getAvailableDeliveryOrders()),
+              takeUntilDestroyed(this.destroyRef)
+            )
             .subscribe({
               next: (orders) => {
                 this.orders.set(orders);
@@ -117,7 +125,15 @@ export class AvailableOrdersPageComponent {
           this.orders.update((items) => items.filter((item) => item.orderId !== order.orderId));
           this.notificationService.success(`Order #${order.orderId} assigned to you.`);
         },
-        error: (error) => this.notificationService.error(getErrorMessage(error))
+        error: (error) => {
+          this.orderService.getAvailableDeliveryOrders()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (orders) => this.orders.set(orders),
+              error: () => {}
+            });
+          this.notificationService.error(getErrorMessage(error));
+        }
       });
   }
 }
