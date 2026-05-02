@@ -139,8 +139,7 @@
                     (input)="clearMessages()">
             </div>
 
-            <p class="otp-timer" *ngIf="otpTimer > 0">OTP expires in {{ otpTimer }} seconds</p>
-            <p class="otp-expired" *ngIf="otpTimer === 0">OTP expired or invalid. Please resend OTP.</p>
+            <p class="otp-timer">OTP expires in {{ otpTimer }} seconds</p>
 
             <button
                 type="button"
