@@ -184,7 +184,7 @@ export class RestoDashboardComponent implements OnInit {
   toggleOpen(restaurant: Restaurant): void {
     if (!restaurant.restaurantId || this.togglingRestaurantId) return;
     this.togglingRestaurantId = restaurant.restaurantId;
-    this.api.toggleRestaurantOpen(restaurant.restaurantId)
+    this.api.toggleRestaurantOpen(restaurant.restaurantId, !restaurant.isOpen)
       .pipe(finalize(() => this.togglingRestaurantId = null))
       .subscribe({
         next: () => this.loadRestaurants(),
@@ -218,3 +218,4 @@ export class RestoDashboardComponent implements OnInit {
     return error?.error?.message || error?.error?.error || error?.message || fallback;
   }
 }
+
