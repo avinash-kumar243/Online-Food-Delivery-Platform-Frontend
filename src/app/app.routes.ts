@@ -14,6 +14,7 @@ import { AdminDeliveryPartnersPageComponent } from './pages/admin/admin-delivery
 import { AdminOrdersPageComponent } from './pages/admin/admin-orders-page.component';
 import { AdminPaymentsPageComponent } from './pages/admin/admin-payments-page.component';
 import { AdminPlaceholderPageComponent } from './pages/admin/admin-placeholder-page.component';
+import { AdminReviewsPageComponent } from './pages/admin/admin-reviews-page.component';
 import { AdminRestaurantsPageComponent } from './pages/admin/admin-restaurants-page.component';
 import { AdminUsersPageComponent } from './pages/admin/admin-users-page.component';
 import { CustomerCartPageComponent } from './pages/customer/customer-cart-page.component';
@@ -109,15 +110,7 @@ export const routes: Routes = [
       { path: 'delivery-partners/pending', component: AdminDeliveryPartnersPageComponent, data: { pendingOnly: true } },
       { path: 'orders', component: AdminOrdersPageComponent },
       { path: 'payments', component: AdminPaymentsPageComponent },
-      {
-        path: 'reviews',
-        component: AdminPlaceholderPageComponent,
-        data: {
-          title: 'Review moderation',
-          description: 'Moderate platform reviews from the review service.',
-          note: 'This repo does not currently include a review-service, so there is no live backend API to bind here yet.'
-        }
-      },
+      { path: 'reviews', component: AdminReviewsPageComponent },
       {
         path: 'notifications',
         component: AdminPlaceholderPageComponent,
