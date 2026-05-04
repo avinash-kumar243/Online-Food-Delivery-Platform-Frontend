@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ConfirmationModalComponent, ModalConfig } from '../../components/shared/confirmation-modal.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
 import { AdminUserRecord } from '../../models/app.models';
 import { UserRole } from '../../models/auth.models';
@@ -9,11 +10,12 @@ import { getErrorMessage } from '../../services/api.utils';
 import { NotificationService } from '../../services/notification.service';
 
 type UserFilter = 'ALL' | UserRole;
+type UserAction = 'SUSPEND' | 'REACTIVATE' | 'DELETE';
 
 @Component({
   selector: 'app-admin-users-page',
   standalone: true,
-  imports: [CommonModule, LoaderComponent],
+  imports: [CommonModule, LoaderComponent, ConfirmationModalComponent],
   template: `
     <section class="section-header">
       <div>
@@ -50,9 +52,29 @@ type UserFilter = 'ALL' | UserRole;
           </div>
         </div>
         <div class="actions">
-          <button *ngIf="user.status !== 'SUSPENDED'" type="button" class="ghost-btn" (click)="suspend(user)">Suspend</button>
-          <button *ngIf="user.status === 'SUSPENDED'" type="button" class="ghost-btn" (click)="reactivate(user)">Reactivate</button>
-          <button type="button" class="secondary-btn danger-btn" (click)="remove(user)">Delete</button>
+          <button
+            *ngIf="user.status !== 'SUSPENDED'"
+            type="button"
+            class="ghost-btn"
+            [disabled]="isProcessing(user)"
+            (click)="openConfirmation('SUSPEND', user)">
+            Suspend
+          </button>
+          <button
+            *ngIf="user.status === 'SUSPENDED'"
+            type="button"
+            class="ghost-btn"
+            [disabled]="isProcessing(user)"
+            (click)="openConfirmation('REACTIVATE', user)">
+            Reactivate
+          </button>
+          <button
+            type="button"
+            class="secondary-btn danger-btn"
+            [disabled]="isProcessing(user)"
+            (click)="openConfirmation('DELETE', user)">
+            Delete
+          </button>
         </div>
       </article>
     </section>
@@ -60,6 +82,14 @@ type UserFilter = 'ALL' | UserRole;
     <ng-template #empty>
       <section class="empty-state" *ngIf="!loading() && !error()">No users found for the selected role.</section>
     </ng-template>
+
+    <app-confirmation-modal
+      *ngIf="pendingConfirmation() as pending"
+      [config]="pending.config"
+      [submitting]="actionInProgress()"
+      (cancel)="closeConfirmation()"
+      (confirm)="confirmPendingAction($event)">
+    </app-confirmation-modal>
   `,
   styles: [`
     h1 { font-size: clamp(2rem, 3vw, 3rem); }
@@ -70,6 +100,7 @@ type UserFilter = 'ALL' | UserRole;
     .compact-meta { margin-top: 18px; gap: 10px; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; align-content: start; justify-content: end; }
     .danger-btn { color: var(--qb-primary); }
+    .actions button[disabled] { opacity: 0.6; cursor: not-allowed; }
     @media (max-width: 860px) {
       .record-card { grid-template-columns: 1fr; }
       .record-heading, .actions { flex-direction: column; align-items: stretch; }
@@ -93,6 +124,9 @@ export class AdminUsersPageComponent {
   readonly error = signal('');
   readonly users = signal<AdminUserRecord[]>([]);
   readonly selectedFilter = signal<UserFilter>('ALL');
+  readonly pendingConfirmation = signal<{ config: ModalConfig; user: AdminUserRecord } | null>(null);
+  readonly actionInProgress = signal(false);
+  readonly processingUserId = signal<number | null>(null);
 
   constructor() {
     this.loadUsers();
@@ -122,44 +156,53 @@ export class AdminUsersPageComponent {
       });
   }
 
-  suspend(user: AdminUserRecord): void {
-    this.adminService.suspendUser(user.id, user.role)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.notificationService.success(`${user.fullName} suspended.`);
-          this.loadUsers();
-        },
-        error: (error) => this.notificationService.error(getErrorMessage(error))
-      });
+  openConfirmation(action: UserAction, user: AdminUserRecord): void {
+    this.pendingConfirmation.set({
+      user,
+      config: {
+        action: this.actionLabel(action),
+        role: this.roleTitle(user.role),
+        userId: String(user.id)
+      }
+    });
   }
 
-  reactivate(user: AdminUserRecord): void {
-    this.adminService.reactivateUser(user.id, user.role)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.notificationService.success(`${user.fullName} reactivated.`);
-          this.loadUsers();
-        },
-        error: (error) => this.notificationService.error(getErrorMessage(error))
-      });
+  closeConfirmation(): void {
+    if (this.actionInProgress()) {
+      return;
+    }
+    this.pendingConfirmation.set(null);
   }
 
-  remove(user: AdminUserRecord): void {
-    if (!window.confirm(`Delete ${user.fullName} (${user.role})? This action cannot be undone.`)) {
+  confirmPendingAction(config: ModalConfig): void {
+    const pending = this.pendingConfirmation();
+    if (!pending || this.actionInProgress() || pending.config.userId !== config.userId || pending.config.action !== config.action) {
       return;
     }
 
-    this.adminService.deleteUser(user.id, user.role)
+    this.actionInProgress.set(true);
+    this.processingUserId.set(pending.user.id);
+
+    this.actionRequest(this.modalActionToUserAction(config.action), pending.user)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.notificationService.success(`${user.fullName} deleted.`);
+          this.notificationService.success(this.successMessage(this.modalActionToUserAction(config.action), pending.user));
+          this.actionInProgress.set(false);
+          this.processingUserId.set(null);
+          this.pendingConfirmation.set(null);
           this.loadUsers();
         },
-        error: (error) => this.notificationService.error(getErrorMessage(error))
+        error: (error) => {
+          this.actionInProgress.set(false);
+          this.processingUserId.set(null);
+          this.notificationService.error(getErrorMessage(error));
+        }
       });
+  }
+
+  isProcessing(user: AdminUserRecord): boolean {
+    return this.processingUserId() === user.id;
   }
 
   statusClass(status?: string): string {
@@ -167,5 +210,60 @@ export class AdminUsersPageComponent {
     if (status === 'SUSPENDED') return 'status-amber';
     if (status === 'DELETED') return 'status-red';
     return 'status-slate';
+  }
+
+  private actionRequest(action: UserAction, user: AdminUserRecord) {
+    if (action === 'DELETE') {
+      return this.adminService.deleteUser(user.id, user.role);
+    }
+    if (action === 'REACTIVATE') {
+      return this.adminService.reactivateUser(user.id, user.role);
+    }
+    return this.adminService.suspendUser(user.id, user.role);
+  }
+
+  private successMessage(action: UserAction, user: AdminUserRecord): string {
+    if (action === 'DELETE') {
+      return `${user.fullName} deleted.`;
+    }
+    if (action === 'REACTIVATE') {
+      return `${user.fullName} reactivated.`;
+    }
+    return `${user.fullName} suspended.`;
+  }
+
+  private roleTitle(role: UserRole): ModalConfig['role'] {
+    switch (role) {
+      case 'RESTAURANT_OWNER':
+        return 'Restaurant Owner';
+      case 'DELIVERY_PARTNER':
+        return 'Delivery Partner';
+      case 'ADMIN':
+        return 'Admin';
+      default:
+        return 'Customer';
+    }
+  }
+
+  private actionLabel(action: UserAction): ModalConfig['action'] {
+    switch (action) {
+      case 'DELETE':
+        return 'Delete';
+      case 'REACTIVATE':
+        return 'Reactivate';
+      default:
+        return 'Suspend';
+    }
+  }
+
+  private modalActionToUserAction(action: ModalConfig['action']): UserAction {
+    switch (action) {
+      case 'Delete':
+        return 'DELETE';
+      case 'Reactivate':
+        return 'REACTIVATE';
+      default:
+        return 'SUSPEND';
+    }
   }
 }

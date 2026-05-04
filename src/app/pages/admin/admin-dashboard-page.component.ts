@@ -9,6 +9,7 @@ import { AdminService } from '../../services/admin.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-admin-dashboard-page',
@@ -134,6 +135,7 @@ export class AdminDashboardPageComponent {
   private readonly adminService = inject(AdminService);
   private readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -146,6 +148,12 @@ export class AdminDashboardPageComponent {
 
   constructor() {
     this.load();
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
+    this.realtimeService.paymentEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
   }
 
   load(): void {

@@ -5,6 +5,7 @@ import { LoaderComponent } from '../../components/shared/loader.component';
 import { Order } from '../../models/app.models';
 import { AdminService } from '../../services/admin.service';
 import { getErrorMessage } from '../../services/api.utils';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-admin-orders-page',
@@ -67,6 +68,7 @@ import { getErrorMessage } from '../../services/api.utils';
 })
 export class AdminOrdersPageComponent {
   private readonly adminService = inject(AdminService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -75,6 +77,9 @@ export class AdminOrdersPageComponent {
 
   constructor() {
     this.load();
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.load());
   }
 
   load(): void {
