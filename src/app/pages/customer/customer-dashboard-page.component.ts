@@ -6,6 +6,7 @@ import { LoaderComponent } from '../../components/shared/loader.component';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { AuthService } from '../../services/auth.service';
 import { RestaurantService } from '../../services/restaurant.service';
+import { RealtimeService } from '../../services/realtime.service';
 import { StatsService } from '../../services/stats.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { CustomerStats, Restaurant } from '../../models/app.models';
@@ -150,6 +151,7 @@ export class CustomerDashboardPageComponent {
   private readonly statsService = inject(StatsService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly authService = inject(AuthService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -165,12 +167,7 @@ export class CustomerDashboardPageComponent {
       return;
     }
 
-    this.statsService.getCustomerStats(customerId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (stats) => this.stats.set(stats),
-        error: (error) => this.error.set(getErrorMessage(error))
-      });
+    this.loadStats(customerId);
 
     this.restaurantService.getApprovedRestaurants()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -183,6 +180,19 @@ export class CustomerDashboardPageComponent {
           this.error.set(getErrorMessage(error));
           this.loading.set(false);
         }
+      });
+
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadStats(customerId));
+  }
+
+  private loadStats(customerId: number): void {
+    this.statsService.getCustomerStats(customerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (stats) => this.stats.set(stats),
+        error: (error) => this.error.set(getErrorMessage(error))
       });
   }
 }

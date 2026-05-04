@@ -10,6 +10,7 @@ import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { OrderReviewService } from '../../services/order-review.service';
 import { OrderService } from '../../services/order.service';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-customer-orders-page',
@@ -150,6 +151,7 @@ export class CustomerOrdersPageComponent {
   private readonly authService = inject(AuthService);
   private readonly orderService = inject(OrderService);
   private readonly orderReviewService = inject(OrderReviewService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly customerId = signal(this.authService.getCurrentUser()?.id ?? 0);
@@ -162,6 +164,9 @@ export class CustomerOrdersPageComponent {
 
   constructor() {
     this.loadOrders();
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadOrders());
   }
 
   loadOrders(): void {
