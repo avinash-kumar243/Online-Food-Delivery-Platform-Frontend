@@ -289,6 +289,30 @@ export interface Payment {
   updatedAt?: string | null;
 }
 
+export type RealtimeEventType = 'ORDER_CREATED' | 'ORDER_UPDATED' | 'PAYMENT_UPDATED';
+
+export interface OrderRealtimeEvent {
+  type: RealtimeEventType;
+  orderId: number;
+  customerId: number;
+  restaurantId: number;
+  deliveryAgentId?: number | null;
+  orderStatus: OrderStatus;
+  paymentStatus?: string | null;
+  occurredAt: string;
+}
+
+export interface PaymentRealtimeEvent {
+  type: RealtimeEventType;
+  orderId: number;
+  customerId: number;
+  restaurantId: number;
+  deliveryAgentId?: number | null;
+  paymentStatus: PaymentStatus | string;
+  amount: number;
+  occurredAt: string;
+}
+
 export interface PaymentOrder {
   orderId: string;
   amount: number;
