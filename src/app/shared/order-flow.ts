@@ -23,33 +23,22 @@ export const ORDER_LABELS: Record<OrderStatus, string> = {
   CANCELLED: 'Cancelled'
 };
 
-const TRANSITIONS: Record<UserRole, OrderStatus[]> = {
-  CUSTOMER: [],
-  RESTAURANT_OWNER: ['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP'],
-  DELIVERY_PARTNER: ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED'],
-  ADMIN: []
+const NEXT_STATUS_BY_ROLE: Record<UserRole, Partial<Record<OrderStatus, OrderStatus>>> = {
+  CUSTOMER: {},
+  RESTAURANT_OWNER: {
+    PLACED: 'CONFIRMED',
+    CONFIRMED: 'PREPARING',
+    PREPARING: 'READY_FOR_PICKUP'
+  },
+  DELIVERY_PARTNER: {
+    READY_FOR_PICKUP: 'PICKED_UP',
+    PICKED_UP: 'OUT_FOR_DELIVERY',
+    OUT_FOR_DELIVERY: 'DELIVERED'
+  },
+  ADMIN: {}
 };
 
 export function getAllowedNextStatuses(role: UserRole, currentStatus: OrderStatus): OrderStatus[] {
-  if (currentStatus === 'PLACED' && role === 'RESTAURANT_OWNER') {
-    return ['CONFIRMED'];
-  }
-
-  if (currentStatus === 'PREPARING' && role === 'RESTAURANT_OWNER') {
-    return ['READY_FOR_PICKUP'];
-  }
-
-  if (currentStatus === 'READY_FOR_PICKUP' && role === 'DELIVERY_PARTNER') {
-    return ['PICKED_UP'];
-  }
-
-  if (currentStatus === 'PICKED_UP' && role === 'DELIVERY_PARTNER') {
-    return ['OUT_FOR_DELIVERY'];
-  }
-
-  if (currentStatus === 'OUT_FOR_DELIVERY' && role === 'DELIVERY_PARTNER') {
-    return ['DELIVERED'];
-  }
-
-  return TRANSITIONS[role].filter((status) => status !== currentStatus);
+  const nextStatus = NEXT_STATUS_BY_ROLE[role][currentStatus];
+  return nextStatus ? [nextStatus] : [];
 }
