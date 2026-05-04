@@ -10,6 +10,21 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="app-shell dashboard-page">
+      <header class="topbar surface-card">
+        <div>
+          <strong>QuickBite</strong>
+          <p>{{ roleLabel() }} portal</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="profile-pill secondary-btn" (click)="goToAccount()">
+            <span class="avatar">{{ initials() }}</span>
+            <span>{{ currentUser()?.email || 'Account' }}</span>
+          </button>
+          <button type="button" class="ghost-btn" (click)="logout()">Logout</button>
+        </div>
+      </header>
+
       <aside class="sidebar surface-card">
         <a class="brand" routerLink="/welcome">QuickBite</a>
         <p class="sidebar-copy">{{ roleLabel() }} workspace</p>
@@ -20,28 +35,12 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
             [routerLink]="item.path"
             routerLinkActive="active"
             class="nav-link">
-            <span>{{ item.icon }}</span>
             {{ item.label }}
           </a>
         </nav>
       </aside>
 
       <div class="content">
-        <header class="topbar surface-card">
-          <div>
-            <strong>QuickBite</strong>
-            <p>{{ roleLabel() }} portal</p>
-          </div>
-
-          <div class="topbar-actions">
-            <button type="button" class="profile-pill secondary-btn" (click)="goToAccount()">
-              <span class="avatar">{{ initials() }}</span>
-              <span>{{ currentUser()?.email || 'Account' }}</span>
-            </button>
-            <button type="button" class="ghost-btn" (click)="logout()">Logout</button>
-          </div>
-        </header>
-
         <main class="dashboard-main app-shell-main">
           <router-outlet></router-outlet>
         </main>
@@ -49,17 +48,52 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
     </div>
   `,
   styles: [`
+    :host {
+      --shell-header-height: 72px;
+      --shell-gap: 18px;
+    }
+
     .app-shell {
       display: grid;
       grid-template-columns: 288px minmax(0, 1fr);
+      grid-template-areas:
+        'topbar topbar'
+        'sidebar content';
+      gap: var(--shell-gap);
       min-height: 100vh;
+      padding: 0 0 18px;
+    }
+
+    .topbar {
+      grid-area: topbar;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      width: 100%;
+      height: var(--shell-header-height);
+      min-height: var(--shell-header-height);
+      max-height: var(--shell-header-height);
+      padding: 0 24px;
+      border-radius: 0;
+      border: 0;
+      backdrop-filter: blur(18px);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      overflow: hidden;
     }
 
     .sidebar {
+      grid-area: sidebar;
       position: sticky;
-      top: 0;
-      height: 100vh;
-      margin: 18px;
+      top: calc(var(--shell-header-height) + var(--shell-gap));
+      height: fit-content;
+      max-height: calc(100vh - (var(--shell-header-height) + var(--shell-gap) + 18px));
+      overflow: auto;
+      margin-left: 18px;
       padding: 28px 22px;
       align-self: start;
     }
@@ -85,9 +119,7 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
     }
 
     .nav-link {
-      display: flex;
-      gap: 12px;
-      align-items: center;
+      display: block;
       padding: 14px 16px;
       border-radius: 16px;
       color: var(--qb-text-muted);
@@ -102,39 +134,51 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
     }
 
     .content {
+      grid-area: content;
       min-width: 0;
-    }
-
-    .topbar {
-      position: sticky;
-      top: 18px;
-      z-index: 25;
+      min-height: calc(100vh - var(--shell-header-height) - var(--shell-gap) - 18px);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      margin: 18px 18px 0 0;
-      padding: 18px 22px;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      padding-right: 18px;
+      overflow: hidden;
     }
 
     .topbar strong {
       display: block;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
+      line-height: 1.1;
     }
 
     .topbar p {
       color: var(--qb-text-muted);
-      margin-top: 4px;
+      margin-top: 2px;
+      font-size: 0.82rem;
+      line-height: 1.1;
+      white-space: nowrap;
     }
 
     .topbar-actions {
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .profile-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      max-width: 320px;
+      min-height: 44px;
+      height: 44px;
       padding-inline: 12px 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .avatar {
@@ -148,37 +192,68 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       font-weight: 700;
     }
 
+    .profile-pill span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .app-shell-main {
-      width: min(1300px, calc(100% - 18px));
-      padding-top: 26px;
+      flex: 1 1 auto;
+      width: min(1300px, 100%);
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      padding-top: 0;
+      overflow: auto;
     }
 
     @media (max-width: 1080px) {
+      :host {
+        --shell-header-height: 76px;
+      }
+
       .app-shell {
         grid-template-columns: 1fr;
+        grid-template-areas:
+          'topbar'
+          'sidebar'
+          'content';
       }
 
       .sidebar {
-        position: relative;
+        position: sticky;
+        top: calc(var(--shell-header-height) + var(--shell-gap));
         height: auto;
-        margin: 18px 18px 0;
-      }
-
-      .topbar {
-        margin: 18px;
+        max-height: none;
+        margin-right: 18px;
       }
 
       .app-shell-main {
-        width: min(1300px, calc(100% - 36px));
+        width: min(1300px, 100%);
         padding-top: 0;
       }
     }
 
     @media (max-width: 720px) {
-      .topbar,
-      .topbar-actions {
-        flex-direction: column;
-        align-items: stretch;
+      .topbar {
+        padding-inline: 14px;
+      }
+
+      .profile-pill {
+        max-width: 220px;
+      }
+
+      .sidebar {
+        margin-left: 12px;
+        margin-right: 12px;
+      }
+
+      .content {
+        min-height: calc(100vh - var(--shell-header-height) - var(--shell-gap) - 18px);
+        padding-right: 12px;
+        padding-left: 12px;
       }
     }
   `],
