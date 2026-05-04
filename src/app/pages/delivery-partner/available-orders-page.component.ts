@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { interval, startWith, switchMap } from 'rxjs';
 import { LoaderComponent } from '../../components/shared/loader.component';
 import { DeliveryPartner, Order } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
@@ -9,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-available-orders-page',
@@ -49,12 +49,11 @@ import { OrderService } from '../../services/order.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AvailableOrdersPageComponent {
-  private static readonly REFRESH_INTERVAL_MS = 5000;
-
   private readonly authService = inject(AuthService);
   private readonly deliveryPartnerService = inject(DeliveryPartnerService);
   private readonly orderService = inject(OrderService);
   private readonly notificationService = inject(NotificationService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -64,6 +63,9 @@ export class AvailableOrdersPageComponent {
 
   constructor() {
     this.load();
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadAvailableOrders());
   }
 
   load(): void {
@@ -87,12 +89,8 @@ export class AvailableOrdersPageComponent {
             return;
           }
 
-          interval(AvailableOrdersPageComponent.REFRESH_INTERVAL_MS)
-            .pipe(
-              startWith(0),
-              switchMap(() => this.orderService.getAvailableDeliveryOrders()),
-              takeUntilDestroyed(this.destroyRef)
-            )
+          this.orderService.getAvailableDeliveryOrders()
+            .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (orders) => {
                 this.orders.set(orders);
@@ -134,6 +132,20 @@ export class AvailableOrdersPageComponent {
             });
           this.notificationService.error(getErrorMessage(error));
         }
+      });
+  }
+
+  private reloadAvailableOrders(): void {
+    const profile = this.profile();
+    if (!profile?.isVerified || !profile?.isOnline) {
+      return;
+    }
+
+    this.orderService.getAvailableDeliveryOrders()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (orders) => this.orders.set(orders),
+        error: () => {}
       });
   }
 }

@@ -9,6 +9,7 @@ import { AuthService } from '../../services/auth.service';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
+import { RealtimeService } from '../../services/realtime.service';
 import { getAllowedNextStatuses, ORDER_LABELS } from '../../shared/order-flow';
 
 @Component({
@@ -55,6 +56,7 @@ export class MyDeliveriesPageComponent {
   private readonly deliveryPartnerService = inject(DeliveryPartnerService);
   private readonly orderService = inject(OrderService);
   private readonly notificationService = inject(NotificationService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -64,6 +66,9 @@ export class MyDeliveriesPageComponent {
 
   constructor() {
     this.loadOrders();
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reloadAgentOrders());
   }
 
   nextStatuses(status: OrderStatus): OrderStatus[] {
@@ -139,6 +144,20 @@ export class MyDeliveriesPageComponent {
           this.error.set(getErrorMessage(error));
           this.loading.set(false);
         }
+      });
+  }
+
+  private reloadAgentOrders(): void {
+    const agentId = this.profile()?.agentId;
+    if (!agentId) {
+      return;
+    }
+
+    this.orderService.getDeliveryPartnerOrders(agentId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (orders) => this.orders.set(orders),
+        error: () => {}
       });
   }
 }
