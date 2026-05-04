@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import AOS from 'aos';
 
 @Component({
   selector: 'app-welcome',
@@ -11,8 +10,14 @@ import AOS from 'aos';
 export class Welcome implements OnInit {
   constructor(private router: Router) {}
 
-  ngOnInit() {
-    AOS.init();
+  async ngOnInit() {
+    try {
+      const aosModule = await import('aos');
+      const AOS = aosModule.default ?? aosModule;
+      AOS.init();
+    } catch (error) {
+      console.error('Failed to initialize welcome page animations.', error);
+    }
   }
 
   navigateToRole(role: string) {
