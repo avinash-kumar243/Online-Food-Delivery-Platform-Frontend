@@ -16,7 +16,7 @@ import { UserRole } from '../models/auth.models';
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
-  private readonly gatewayBaseUrl = environment.apiGatewayBaseUrl;
+  private readonly baseUrl = environment.apiBaseUrl;
 
   getDashboardStats(): Observable<DashboardStats> {
     return forkJoin({
@@ -46,8 +46,8 @@ export class AdminService {
 
   getUsers(role?: UserRole): Observable<AdminUserRecord[]> {
     const url = role
-      ? `${this.gatewayBaseUrl}/api/v1/admin/users/role/${role}`
-      : `${this.gatewayBaseUrl}/api/v1/admin/users`;
+      ? `${this.baseUrl}/admin/users/role/${role}`
+      : `${this.baseUrl}/admin/users`;
     return this.http.get<Array<{
       userId: number;
       fullName: string;
@@ -70,54 +70,54 @@ export class AdminService {
   }
 
   suspendUser(userId: number, role: UserRole): Observable<void> {
-    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/users/${userId}/suspend?role=${role}`, {});
+    return this.http.put<void>(`${this.baseUrl}/admin/users/${userId}/suspend?role=${role}`, {});
   }
 
   reactivateUser(userId: number, role: UserRole): Observable<void> {
-    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/users/${userId}/reactivate?role=${role}`, {});
+    return this.http.put<void>(`${this.baseUrl}/admin/users/${userId}/reactivate?role=${role}`, {});
   }
 
   deleteUser(userId: number, role: UserRole): Observable<void> {
-    return this.http.delete<void>(`${this.gatewayBaseUrl}/api/v1/admin/users/${userId}?role=${role}`);
+    return this.http.delete<void>(`${this.baseUrl}/admin/users/${userId}?role=${role}`);
   }
 
   getPendingRestaurants(): Observable<AdminRestaurantRecord[]> {
-    return this.http.get<AdminRestaurantRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/pending`);
+    return this.http.get<AdminRestaurantRecord[]>(`${this.baseUrl}/admin/restaurants/pending`);
   }
 
   getAllRestaurants(): Observable<AdminRestaurantRecord[]> {
-    return this.http.get<AdminRestaurantRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/all`);
+    return this.http.get<AdminRestaurantRecord[]>(`${this.baseUrl}/admin/restaurants/all`);
   }
 
   approveRestaurant(restaurantId: number, adminId: number): Observable<void> {
-    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/approve`, { adminId });
+    return this.http.put<void>(`${this.baseUrl}/admin/restaurants/${restaurantId}/approve`, { adminId });
   }
 
   rejectRestaurant(restaurantId: number, adminId: number, feedback: string): Observable<void> {
-    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/reject`, { adminId, feedback });
+    return this.http.put<void>(`${this.baseUrl}/admin/restaurants/${restaurantId}/reject`, { adminId, feedback });
   }
 
   getPendingDeliveryPartners(): Observable<AdminDeliveryPartnerRecord[]> {
-    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/agents/pending`);
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.baseUrl}/admin/agents/pending`);
   }
 
   getAllDeliveryPartners(): Observable<AdminDeliveryPartnerRecord[]> {
-    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.gatewayBaseUrl}/api/v1/admin/agents/all`);
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.baseUrl}/admin/agents/all`);
   }
 
   approveDeliveryPartner(agentId: number, adminId: number): Observable<void> {
-    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/agents/${agentId}/verify`, { adminId });
+    return this.http.put<void>(`${this.baseUrl}/admin/agents/${agentId}/verify`, { adminId });
   }
 
   rejectDeliveryPartner(agentId: number, adminId: number, feedback: string): Observable<void> {
-    return this.http.put<void>(`${this.gatewayBaseUrl}/api/v1/admin/agents/${agentId}/reject`, { adminId, feedback });
+    return this.http.put<void>(`${this.baseUrl}/admin/agents/${agentId}/reject`, { adminId, feedback });
   }
 
   getAllOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.gatewayBaseUrl}/api/v1/admin/orders`);
+    return this.http.get<Order[]>(`${this.baseUrl}/admin/orders`);
   }
 
   getAllPayments(): Observable<Payment[]> {
-    return this.http.get<ApiResponse<Payment[]>>(`${this.gatewayBaseUrl}/api/v1/admin/payments`).pipe(map((response) => response.data));
+    return this.http.get<ApiResponse<Payment[]>>(`${this.baseUrl}/admin/payments`).pipe(map((response) => response.data));
   }
 }
