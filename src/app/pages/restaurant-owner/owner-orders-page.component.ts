@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
+import { RealtimeService } from '../../services/realtime.service';
 import { RestaurantService } from '../../services/restaurant.service';
 import { Order, OrderStatus } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
@@ -46,9 +47,11 @@ export class OwnerOrdersPageComponent {
   private readonly restaurantService = inject(RestaurantService);
   private readonly orderService = inject(OrderService);
   private readonly notificationService = inject(NotificationService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly orders = signal<Order[]>([]);
+  readonly restaurantId = signal<number | null>(null);
 
   constructor() {
     const ownerId = this.authService.getCurrentUser()?.id;
@@ -58,9 +61,17 @@ export class OwnerOrdersPageComponent {
       .subscribe({
         next: (restaurant) => {
           if (!restaurant) return;
-          this.orderService.getRestaurantOrders(restaurant.restaurantId)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({ next: (orders) => this.orders.set(orders) });
+          this.restaurantId.set(restaurant.restaurantId);
+          this.loadOrders(restaurant.restaurantId);
+        }
+      });
+
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const restaurantId = this.restaurantId();
+        if (restaurantId) {
+          this.loadOrders(restaurantId);
         }
       });
   }
@@ -79,5 +90,11 @@ export class OwnerOrdersPageComponent {
         },
         error: (error) => this.notificationService.error(getErrorMessage(error))
       });
+  }
+
+  private loadOrders(restaurantId: number): void {
+    this.orderService.getRestaurantOrders(restaurantId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (orders) => this.orders.set(orders) });
   }
 }

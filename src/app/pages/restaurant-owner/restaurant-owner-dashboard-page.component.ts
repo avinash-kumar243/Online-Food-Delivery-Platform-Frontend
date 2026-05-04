@@ -7,6 +7,7 @@ import { DashboardStats, MenuItem, Restaurant } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { MenuService } from '../../services/menu.service';
+import { RealtimeService } from '../../services/realtime.service';
 import { RestaurantService } from '../../services/restaurant.service';
 import { StatsService } from '../../services/stats.service';
 
@@ -105,6 +106,7 @@ export class RestaurantOwnerDashboardPageComponent {
   private readonly restaurantService = inject(RestaurantService);
   private readonly menuService = inject(MenuService);
   private readonly statsService = inject(StatsService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -121,6 +123,14 @@ export class RestaurantOwnerDashboardPageComponent {
       return;
     }
 
+    this.loadDashboard(ownerId);
+
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadDashboard(ownerId));
+  }
+
+  private loadDashboard(ownerId: number): void {
     this.restaurantService.getMyRestaurant(ownerId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
