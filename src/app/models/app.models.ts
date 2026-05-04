@@ -14,6 +14,7 @@ export type OrderStatus =
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED' | 'REFUND_PENDING';
 export type AvailabilityStatus = 'ONLINE' | 'OFFLINE';
 export type PaymentMethod = 'CARD' | 'UPI' | 'WALLET' | 'COD';
+export type ReviewType = 'FOOD' | 'DELIVERY';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -226,7 +227,35 @@ export interface Order {
   items: OrderItem[];
 }
 
+export interface Review {
+  reviewId: number;
+  orderId: number;
+  customerId: number;
+  restaurantId: number;
+  agentId: number;
+  reviewType: ReviewType;
+  rating: number;
+  comment?: string | null;
+  reviewDate: string;
+  verified: boolean;
+}
+
+export interface FoodReviewDTO {
+  orderId: number;
+  customerId: number;
+  rating: number;
+  comment?: string;
+}
+
+export interface DeliveryReviewDTO {
+  orderId: number;
+  customerId: number;
+  rating: number;
+  comment?: string;
+}
+
 export interface PlaceOrderRequest {
+  checkoutReference: string;
   customerId: number;
   restaurantId: number;
   discount: number;
