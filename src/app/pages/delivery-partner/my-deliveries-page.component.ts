@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { map, of, switchMap } from 'rxjs';
 import { LoaderComponent } from '../../components/shared/loader.component';
 import { DeliveryPartner, Order, OrderStatus } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
@@ -8,7 +9,7 @@ import { AuthService } from '../../services/auth.service';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
-import { getAllowedNextStatuses } from '../../shared/order-flow';
+import { getAllowedNextStatuses, ORDER_LABELS } from '../../shared/order-flow';
 
 @Component({
   selector: 'app-my-deliveries-page',
@@ -29,10 +30,11 @@ import { getAllowedNextStatuses } from '../../shared/order-flow';
       <article *ngFor="let order of orders()" class="surface-card order-card">
         <div>
           <strong>Order #{{ order.orderId }}</strong>
-          <p>{{ order.deliveryAddress }} - {{ order.orderStatus }}</p>
+          <p>{{ order.deliveryAddress }} - {{ statusLabel(order.orderStatus) }}</p>
         </div>
         <div class="actions">
-          <button *ngFor="let status of nextStatuses(order.orderStatus)" type="button" class="ghost-btn" (click)="update(order.orderId, status)">{{ status }}</button>
+          <span class="status-pill">{{ statusLabel(order.orderStatus) }}</span>
+          <button *ngFor="let status of nextStatuses(order.orderStatus)" type="button" class="ghost-btn" (click)="update(order.orderId, status)">{{ statusLabel(status) }}</button>
         </div>
       </article>
     </section>
@@ -43,7 +45,8 @@ import { getAllowedNextStatuses } from '../../shared/order-flow';
   `,
   styles: [`
     .order-card { padding: 20px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .status-pill { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--qb-surface-soft, #f4f4f5); color: var(--qb-text, #18181b); font-weight: 600; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -60,6 +63,47 @@ export class MyDeliveriesPageComponent {
   readonly error = signal('');
 
   constructor() {
+    this.loadOrders();
+  }
+
+  nextStatuses(status: OrderStatus): OrderStatus[] {
+    return getAllowedNextStatuses('DELIVERY_PARTNER', status);
+  }
+
+  statusLabel(status: OrderStatus): string {
+    return ORDER_LABELS[status] ?? status;
+  }
+
+  update(orderId: number, status: OrderStatus): void {
+    const agentId = this.profile()?.agentId;
+    if (!agentId) {
+      this.notificationService.error('Unable to resolve delivery partner profile.');
+      return;
+    }
+
+    this.orderService.updateOrderStatus(orderId, status)
+      .pipe(
+        switchMap((order: Order) => {
+          if (status !== 'DELIVERED') {
+            return of(order);
+          }
+          return this.deliveryPartnerService.completeDelivery(agentId).pipe(map(() => order));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (order: Order) => {
+          this.orders.update((items) => items.map((current) => current.orderId === orderId ? order : current));
+          if (status === 'DELIVERED') {
+            this.profile.update((current) => current ? { ...current, isOnline: true } : current);
+          }
+          this.notificationService.success(`Order #${orderId} updated to ${this.statusLabel(status)}.`);
+        },
+        error: (error) => this.notificationService.error(getErrorMessage(error))
+      });
+  }
+
+  private loadOrders(): void {
     const userId = this.authService.getCurrentUser()?.id;
     if (!userId) {
       this.error.set('Unable to resolve delivery partner session.');
@@ -95,22 +139,6 @@ export class MyDeliveriesPageComponent {
           this.error.set(getErrorMessage(error));
           this.loading.set(false);
         }
-      });
-  }
-
-  nextStatuses(status: OrderStatus): OrderStatus[] {
-    return getAllowedNextStatuses('DELIVERY_PARTNER', status);
-  }
-
-  update(orderId: number, status: OrderStatus): void {
-    this.orderService.updateOrderStatus(orderId, status)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (order) => {
-          this.orders.update((items) => items.map((current) => current.orderId === orderId ? order : current));
-          this.notificationService.success(`Order #${orderId} updated to ${status}.`);
-        },
-        error: (error) => this.notificationService.error(getErrorMessage(error))
       });
   }
 }

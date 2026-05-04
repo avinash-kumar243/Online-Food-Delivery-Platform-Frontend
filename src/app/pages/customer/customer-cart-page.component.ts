@@ -116,6 +116,7 @@ export class CustomerCartPageComponent {
   readonly error = signal('');
   readonly cart = signal<Cart | null>(null);
   readonly placingOrder = signal(false);
+  private checkoutReference: string | null = null;
 
   deliveryAddress = '';
   specialInstructions = '';
@@ -193,6 +194,7 @@ export class CustomerCartPageComponent {
     }
 
     const payload: PlaceOrderRequest = {
+      checkoutReference: this.checkoutReference ??= this.buildCheckoutReference(customerId, cart.restaurantId),
       customerId,
       restaurantId: cart.restaurantId,
       discount: 0,
@@ -219,6 +221,7 @@ export class CustomerCartPageComponent {
               .pipe(takeUntilDestroyed(this.destroyRef))
               .subscribe({ next: () => undefined, error: () => undefined });
             this.notificationService.success(`Order #${order.orderId} placed successfully.`);
+            this.checkoutReference = null;
             this.placingOrder.set(false);
             this.router.navigate(['/customer/orders', order.orderId]);
           };
@@ -234,6 +237,7 @@ export class CustomerCartPageComponent {
                 next: () => finalizeSuccess(),
                 error: (error: unknown) => {
                   this.notificationService.error(getErrorMessage(error, 'Order placed but COD payment record could not be created.'));
+                  this.checkoutReference = null;
                   this.placingOrder.set(false);
                 }
             });
@@ -254,12 +258,14 @@ export class CustomerCartPageComponent {
               },
               error: (error: unknown) => {
                 this.notificationService.error(getErrorMessage(error));
+                this.checkoutReference = null;
                 this.placingOrder.set(false);
               }
             });
         },
         error: (error) => {
           this.notificationService.error(getErrorMessage(error));
+          this.checkoutReference = null;
           this.placingOrder.set(false);
         }
       });
@@ -370,15 +376,21 @@ export class CustomerCartPageComponent {
           if (message) {
             this.notificationService.error(message);
           }
+          this.checkoutReference = null;
           this.placingOrder.set(false);
         },
         error: () => {
           if (message) {
             this.notificationService.error(message);
           }
+          this.checkoutReference = null;
           this.placingOrder.set(false);
         }
       });
+  }
+
+  private buildCheckoutReference(customerId: number, restaurantId: number): string {
+    return `qb-${customerId}-${restaurantId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   private razorpayMethods(paymentMethod: 'COD' | 'UPI' | 'CARD' | 'WALLET'): Record<string, boolean> {
