@@ -11,5 +11,7 @@ export const environment = {
   orderServiceDirectBaseUrl: 'http://localhost:8085/api/v1',
   paymentBaseUrl: 'http://localhost:8080',
   paymentServiceDirectBaseUrl: 'http://localhost:8086',
-  deliveryBaseUrl: 'http://localhost:8080/api/v1'
+  deliveryBaseUrl: 'http://localhost:8080/api/v1',
+  reviewBaseUrl: 'http://localhost:8080',
+  reviewServiceDirectBaseUrl: 'http://localhost:8089'
 };
