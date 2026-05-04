@@ -63,6 +63,12 @@ export class DeliveryPartnerService {
     );
   }
 
+  completeDelivery(agentId: number): Observable<DeliveryPartner> {
+    return this.http.post<DeliveryAgentApiResponse>(`${this.baseUrl}/agents/${agentId}/complete-delivery`, {}).pipe(
+      map((response) => this.toPartner(response))
+    );
+  }
+
   getPendingDeliveryPartnersForAdmin(): Observable<AdminDeliveryPartnerRecord[]> {
     return this.http.get<AdminDeliveryPartnerRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/pending`);
   }

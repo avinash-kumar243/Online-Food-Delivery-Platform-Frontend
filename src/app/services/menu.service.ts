@@ -32,7 +32,7 @@ export class MenuService {
   }
 
   addMenuItem(payload: MenuItemPayload): Observable<MenuItem> {
-    return this.http.post<MenuItem>(`${this.baseUrl}/menu`, {
+    return this.http.post<MenuItem>(`${this.baseUrl}/menu/create`, {
       type: 'ITEM',
       item: payload
     });
@@ -46,14 +46,14 @@ export class MenuService {
   }
 
   addCategory(payload: MenuCategoryPayload): Observable<MenuCategory> {
-    return this.http.post<MenuCategory>(`${this.baseUrl}/menu`, {
+    return this.http.post<MenuCategory>(`${this.baseUrl}/menu/create`, {
       type: 'CATEGORY',
       category: payload
     });
   }
 
   deleteMenuItem(itemId: number): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.baseUrl}/menu`, {
+    return this.http.delete<{ message: string }>(`${this.baseUrl}/menu/delete`, {
       body: {
         type: 'ITEM',
         itemId
@@ -68,3 +68,5 @@ export class MenuService {
     });
   }
 }
+
+

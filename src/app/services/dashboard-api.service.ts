@@ -34,8 +34,8 @@ export class DashboardApiService {
     return this.http.post<Restaurant>(`${this.baseUrl}/restaurants`, restaurant);
   }
 
-  toggleRestaurantOpen(restaurantId: number): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/restaurants/toggleOpen/${restaurantId}`, {});
+  toggleRestaurantOpen(restaurantId: number, open: boolean): Observable<Restaurant> {
+    return this.http.patch<Restaurant>(`${this.baseUrl}/restaurants/${restaurantId}/toggle-status`, { open });
   }
 
   getCustomerOrders(customerId: number): Observable<OrderSummary[]> {
@@ -62,3 +62,4 @@ export class DashboardApiService {
     return this.http.put<{ online: boolean }>(`${this.baseUrl}/deliveries/partner/${partnerId}/availability`, { online });
   }
 }
+
