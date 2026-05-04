@@ -7,7 +7,7 @@ import { MenuCategory, MenuCategoryPayload, MenuItem, MenuItemPayload, Restauran
 @Injectable({ providedIn: 'root' })
 export class MenuService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.menuBaseUrl;
+  private readonly baseUrl = environment.apiBaseUrl;
 
   getMenuByRestaurant(restaurantId: number): Observable<RestaurantMenu> {
     return this.http.get<RestaurantMenu>(`${this.baseUrl}/menu/restaurant/${restaurantId}`).pipe(

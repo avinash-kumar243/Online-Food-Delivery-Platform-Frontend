@@ -171,11 +171,8 @@ interface RestaurantMenuResponseDto {
 export class DashboardService {
   private readonly http = inject(HttpClient);
 
-  private readonly authBaseUrl = environment.authBaseUrl ?? environment.backendBaseUrl;
-  private readonly restaurantBaseUrl = environment.restaurantBaseUrl;
-  private readonly menuBaseUrl = environment.menuBaseUrl;
-  private readonly cartBaseUrl = environment.cartBaseUrl;
-  private readonly orderBaseUrl = environment.orderBaseUrl;
+  private readonly authBaseUrl = environment.apiGatewayBaseUrl;
+  private readonly apiBaseUrl = environment.apiBaseUrl;
 
   getDashboardRoute(role: UserRole | null): string {
     return role ? DASHBOARD_ROUTE_BY_ROLE[role] : DASHBOARD_ROUTE_BY_ROLE.CUSTOMER;
@@ -199,13 +196,13 @@ export class DashboardService {
         .get<CustomerProfileDto>(`${this.authBaseUrl}/auth/customer/profile/${userId}`)
         .pipe(catchError(() => of(null))),
       restaurants: this.http
-        .get<RestaurantResponseDto[]>(`${this.restaurantBaseUrl}/restaurants/search`)
+        .get<RestaurantResponseDto[]>(`${this.apiBaseUrl}/restaurants/search`)
         .pipe(catchError(() => of([]))),
       cart: this.http
-        .get<CartResponseDto>(`${this.cartBaseUrl}/cart/${userId}`)
+        .get<CartResponseDto>(`${this.apiBaseUrl}/cart/${userId}`)
         .pipe(catchError(() => of(this.emptyCart(userId)))),
       orders: this.http
-        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/customer/${userId}`)
+        .get<OrderResponseDto[]>(`${this.apiBaseUrl}/orders/customer/${userId}`)
         .pipe(catchError(() => of([])))
     }).pipe(
       map(({ profile, restaurants, cart, orders }) => {
@@ -274,19 +271,19 @@ export class DashboardService {
         .get<RestaurantOwnerProfileDto>(`${this.authBaseUrl}/auth/restaurant/profile/${userId}`)
         .pipe(catchError(() => of(null))),
       restaurants: this.http
-        .get<RestaurantResponseDto[]>(`${this.restaurantBaseUrl}/restaurants/owner/${userId}`)
+        .get<RestaurantResponseDto[]>(`${this.apiBaseUrl}/restaurants/owner/${userId}`)
         .pipe(catchError(() => of([])))
     }).pipe(
       switchMap(({ profile, restaurants }) => {
         const primaryRestaurant = restaurants[0] ?? null;
         const menu$ = primaryRestaurant
           ? this.http
-              .get<RestaurantMenuResponseDto>(`${this.menuBaseUrl}/menu/restaurant/${primaryRestaurant.restaurantId}`)
+              .get<RestaurantMenuResponseDto>(`${this.apiBaseUrl}/menu/restaurant/${primaryRestaurant.restaurantId}`)
               .pipe(catchError(() => of({ restaurantId: primaryRestaurant.restaurantId, totalItems: 0, categories: [] })))
           : of<RestaurantMenuResponseDto>({ restaurantId: 0, totalItems: 0, categories: [] });
         const orders$ = primaryRestaurant
           ? this.http
-              .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/restaurant/${primaryRestaurant.restaurantId}`)
+              .get<OrderResponseDto[]>(`${this.apiBaseUrl}/orders/restaurant/${primaryRestaurant.restaurantId}`)
               .pipe(catchError(() => of([])))
           : of<OrderResponseDto[]>([]);
 
@@ -352,13 +349,13 @@ export class DashboardService {
         .get<DeliveryPartnerProfileDto>(`${this.authBaseUrl}/auth/delivery-partner/profile/${userId}`)
         .pipe(catchError(() => of(null))),
       assignments: this.http
-        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/agent/${userId}`)
+        .get<OrderResponseDto[]>(`${this.apiBaseUrl}/orders/agent/${userId}`)
         .pipe(catchError(() => of([]))),
       availableOrders: this.http
-        .get<OrderResponseDto[]>(`${this.orderBaseUrl}/orders/delivery/available`)
+        .get<OrderResponseDto[]>(`${this.apiBaseUrl}/orders/delivery/available`)
         .pipe(catchError(() => of([]))),
       restaurants: this.http
-        .get<RestaurantResponseDto[]>(`${this.restaurantBaseUrl}/restaurants/search`)
+        .get<RestaurantResponseDto[]>(`${this.apiBaseUrl}/restaurants/search`)
         .pipe(catchError(() => of([])))
     }).pipe(
       map(({ profile, assignments, availableOrders, restaurants }) => {
@@ -407,7 +404,7 @@ export class DashboardService {
 
   updateRestaurantStatus(restaurantId: number, open: boolean): Observable<boolean> {
     return this.http
-      .patch<RestaurantResponseDto>(`${this.restaurantBaseUrl}/restaurants/${restaurantId}/toggle-status`, { open })
+      .patch<RestaurantResponseDto>(`${this.apiBaseUrl}/restaurants/${restaurantId}/toggle-status`, { open })
       .pipe(
         map((response) => response.isOpen ?? open),
         catchError(() => of(open))

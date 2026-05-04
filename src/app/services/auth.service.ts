@@ -15,7 +15,7 @@ export class AuthService {
 
   private http = inject(HttpClient);
   private router = inject(Router);
-  private backendBaseUrl = environment.authBaseUrl ?? environment.backendBaseUrl;
+  private backendBaseUrl = environment.apiGatewayBaseUrl;
   private apiUrl = `${this.backendBaseUrl}/auth`;
   private currentUserSubject = new BehaviorSubject<CurrentUser | null>(this.resolveCurrentUser());
 

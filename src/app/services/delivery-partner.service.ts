@@ -32,7 +32,7 @@ interface DeliveryAgentApiResponse {
 @Injectable({ providedIn: 'root' })
 export class DeliveryPartnerService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.deliveryBaseUrl;
+  private readonly baseUrl = environment.apiBaseUrl;
 
   registerDeliveryPartner(payload: DeliveryRegistrationRequest, fullName: string, phone: string): Observable<DeliveryPartner> {
     return this.http.post<DeliveryAgentApiResponse>(`${this.baseUrl}/agents/register`, {
@@ -70,19 +70,19 @@ export class DeliveryPartnerService {
   }
 
   getPendingDeliveryPartnersForAdmin(): Observable<AdminDeliveryPartnerRecord[]> {
-    return this.http.get<AdminDeliveryPartnerRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/pending`);
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.baseUrl}/admin/agents/pending`);
   }
 
   getAllDeliveryPartnersForAdmin(): Observable<AdminDeliveryPartnerRecord[]> {
-    return this.http.get<AdminDeliveryPartnerRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/all`);
+    return this.http.get<AdminDeliveryPartnerRecord[]>(`${this.baseUrl}/admin/agents/all`);
   }
 
   approveDeliveryPartner(agentId: number, adminId: number): Observable<void> {
-    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/${agentId}/verify`, { adminId });
+    return this.http.put<void>(`${this.baseUrl}/admin/agents/${agentId}/verify`, { adminId });
   }
 
   rejectDeliveryPartner(agentId: number, adminId: number, feedback: string): Observable<void> {
-    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/agents/${agentId}/reject`, { adminId, feedback });
+    return this.http.put<void>(`${this.baseUrl}/admin/agents/${agentId}/reject`, { adminId, feedback });
   }
 
   private toPartner(response: DeliveryAgentApiResponse): DeliveryPartner {

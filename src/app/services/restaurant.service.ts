@@ -7,7 +7,7 @@ import { AdminRestaurantRecord, Restaurant, RestaurantRegistrationRequest } from
 @Injectable({ providedIn: 'root' })
 export class RestaurantService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.restaurantBaseUrl;
+  private readonly baseUrl = environment.apiBaseUrl;
 
   getApprovedRestaurants(filters?: { name?: string; city?: string; cuisine?: string }): Observable<Restaurant[]> {
     const params = new URLSearchParams();
@@ -41,19 +41,19 @@ export class RestaurantService {
   }
 
   getPendingRestaurantsForAdmin(): Observable<AdminRestaurantRecord[]> {
-    return this.http.get<AdminRestaurantRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/pending`);
+    return this.http.get<AdminRestaurantRecord[]>(`${this.baseUrl}/admin/restaurants/pending`);
   }
 
   getAllRestaurantsForAdmin(): Observable<AdminRestaurantRecord[]> {
-    return this.http.get<AdminRestaurantRecord[]>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/all`);
+    return this.http.get<AdminRestaurantRecord[]>(`${this.baseUrl}/admin/restaurants/all`);
   }
 
   approveRestaurant(restaurantId: number, adminId: number): Observable<void> {
-    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/approve`, { adminId });
+    return this.http.put<void>(`${this.baseUrl}/admin/restaurants/${restaurantId}/approve`, { adminId });
   }
 
   rejectRestaurant(restaurantId: number, adminId: number, feedback: string): Observable<void> {
-    return this.http.put<void>(`${environment.apiGatewayBaseUrl}/api/v1/admin/restaurants/${restaurantId}/reject`, { adminId, feedback });
+    return this.http.put<void>(`${this.baseUrl}/admin/restaurants/${restaurantId}/reject`, { adminId, feedback });
   }
 
   updateRestaurantStatus(restaurantId: number, open: boolean): Observable<Restaurant> {

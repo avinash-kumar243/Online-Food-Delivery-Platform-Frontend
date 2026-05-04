@@ -8,7 +8,7 @@ import { environment } from '../../environments/environment';
 })
 export class MeasurementService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.backendBaseUrl}/api/v1/quantities`;
+  private apiUrl = `${environment.apiBaseUrl}/quantities`;
 
   getAllHistory(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/history`);

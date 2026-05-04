@@ -7,7 +7,7 @@ import { CustomerProfile, DeliveryPartner, RestaurantOwnerProfile } from '../mod
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
   private readonly http = inject(HttpClient);
-  private readonly authBaseUrl = environment.authBaseUrl;
+  private readonly authBaseUrl = environment.apiGatewayBaseUrl;
 
   getCustomerProfile(customerId: number): Observable<CustomerProfile> {
     return this.http.get<CustomerProfile>(`${this.authBaseUrl}/auth/customer/profile/${customerId}`);
