@@ -45,6 +45,12 @@ import { RealtimeService } from '../../services/realtime.service';
   styles: [`
     .order-card { padding: 20px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
     .order-card p { margin-top: 6px; color: var(--qb-text-muted); }
+    @media (max-width: 760px) {
+      .order-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

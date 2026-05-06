@@ -29,7 +29,25 @@ import { RealtimeService } from '../../services/realtime.service';
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
 
     <ng-container *ngIf="!loading() && !error()">
-      <section class="stats-grid" *ngIf="stats() as stats">
+      <section class="surface-card page-hero" *ngIf="stats() as stats">
+        <div>
+          <span class="dashboard-kicker">Control center</span>
+          <h2>Live demand, approvals, and delivery capacity at a glance.</h2>
+          <p class="dashboard-subtitle">The dashboard blends approval queues with core platform metrics so admin action stays close to current operating conditions.</p>
+        </div>
+        <div class="hero-meta">
+          <div class="meta-block">
+            <span>Pending approvals</span>
+            <strong>{{ (stats.pendingRestaurantApprovals || 0) + (stats.pendingDeliveryPartnerApprovals || 0) }}</strong>
+          </div>
+          <div class="meta-block">
+            <span>Orders in motion</span>
+            <strong>{{ stats.pendingOrders || 0 }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-grid dashboard-section" *ngIf="stats() as stats">
         <article class="surface-card stat-card"><div class="value">{{ stats.totalCustomers || 0 }}</div><p class="helper">Customers</p></article>
         <article class="surface-card stat-card"><div class="value">{{ stats.totalRestaurantOwners || 0 }}</div><p class="helper">Restaurant owners</p></article>
         <article class="surface-card stat-card"><div class="value">{{ stats.totalDeliveryPartners || 0 }}</div><p class="helper">Delivery partners</p></article>
@@ -55,7 +73,7 @@ import { RealtimeService } from '../../services/realtime.service';
             <article *ngFor="let restaurant of pendingRestaurants()" class="mini-card">
               <div>
                 <strong>{{ restaurant.restaurantName }}</strong>
-                <p>{{ restaurant.cuisine }} - {{ restaurant.city }}</p>
+                <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
                 <p>Owner: {{ restaurant.ownerName || ('Owner #' + restaurant.ownerId) }}</p>
               </div>
               <div class="actions">
@@ -78,7 +96,7 @@ import { RealtimeService } from '../../services/realtime.service';
             <article *ngFor="let agent of pendingAgents()" class="mini-card">
               <div>
                 <strong>{{ agent.fullName }}</strong>
-                <p>{{ agent.vehicleType }} - {{ agent.vehicleNumber }}</p>
+                <p>{{ agent.vehicleType }} | {{ agent.vehicleNumber }}</p>
                 <p>{{ agent.phone }}</p>
               </div>
               <div class="actions">
@@ -115,18 +133,80 @@ import { RealtimeService } from '../../services/realtime.service';
     </ng-template>
   `,
   styles: [`
-    h1 { font-size: clamp(2rem, 3vw, 3rem); }
-    .stat-card, .panel-card, .modal-card { padding: 24px; }
-    .panel-header p, .modal-copy { margin-top: 6px; color: var(--qb-text-muted); }
-    .mini-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 18px; border: 1px solid var(--qb-border); border-radius: 18px; }
-    .mini-card p { margin-top: 6px; color: var(--qb-text-muted); }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .feedback-label span { display: block; margin-bottom: 8px; font-weight: 600; }
-    textarea { width: 100%; border: 1px solid var(--qb-border); border-radius: 14px; padding: 12px 14px; resize: vertical; }
-    .modal-card { margin-top: 24px; display: grid; gap: 16px; }
+    .page-hero,
+    .panel-card,
+    .modal-card {
+      padding: 24px;
+    }
+    .page-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(220px, 0.75fr);
+      gap: 18px;
+    }
+    .page-hero h2 {
+      margin-bottom: 10px;
+      font-size: clamp(1.75rem, 2.4vw, 2.5rem);
+      line-height: 1.06;
+    }
+    .hero-meta {
+      display: grid;
+      gap: 14px;
+    }
+    .meta-block {
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.56);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+    .meta-block span,
+    .panel-header p,
+    .modal-copy {
+      color: var(--qb-text-muted);
+    }
+    .meta-block span {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+    .meta-block strong {
+      font-size: 1.8rem;
+    }
+    .mini-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      padding: 18px;
+    }
+    .mini-card p {
+      margin-top: 6px;
+      color: var(--qb-text-muted);
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .feedback-label {
+      display: grid;
+      gap: 8px;
+    }
+    .feedback-label span {
+      font-weight: 600;
+    }
+    .modal-card {
+      margin-top: 24px;
+      display: grid;
+      gap: 16px;
+    }
     @media (max-width: 860px) {
-      .mini-card { grid-template-columns: 1fr; }
-      .actions { align-items: stretch; }
+      .page-hero,
+      .mini-card {
+        grid-template-columns: 1fr;
+      }
+      .actions {
+        align-items: stretch;
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

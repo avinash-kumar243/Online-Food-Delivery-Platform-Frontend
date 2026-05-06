@@ -43,9 +43,20 @@ import { NotificationService } from '../../services/notification.service';
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
   `,
   styles: [`
-    .hero-card { padding: 24px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    .hero-card {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
     .actions { display: flex; flex-wrap: wrap; gap: 12px; }
     .disabled-link { pointer-events: none; opacity: 0.6; }
+    @media (max-width: 820px) {
+      .hero-card {
+        grid-template-columns: 1fr;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

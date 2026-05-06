@@ -52,6 +52,28 @@ import { CustomerStats, Restaurant } from '../../models/app.models';
         </article>
       </section>
 
+      <section class="surface-card page-hero dashboard-section" *ngIf="stats() as stats">
+        <div>
+          <span class="dashboard-kicker">Recommendations</span>
+          <h2>{{ stats.favoriteRestaurants.length ? 'Your next order is already close.' : 'Start building your regular rotation.' }}</h2>
+          <p class="dashboard-subtitle">
+            {{ stats.favoriteRestaurants.length
+              ? 'We prioritize restaurants you already trust so reordering stays fast.'
+              : 'Browse approved restaurants and your repeat ordering patterns will start shaping this feed.' }}
+          </p>
+        </div>
+        <div class="hero-aside">
+          <div class="hero-metric">
+            <span>Recent order velocity</span>
+            <strong>{{ stats.recentOrders.length }}</strong>
+          </div>
+          <div class="hero-metric">
+            <span>Favorite restaurants</span>
+            <strong>{{ stats.favoriteRestaurants.length }}</strong>
+          </div>
+        </div>
+      </section>
+
       <section class="split-layout dashboard-section">
         <article class="surface-card section-card">
           <div class="section-header compact">
@@ -65,9 +87,9 @@ import { CustomerStats, Restaurant } from '../../models/app.models';
             <a *ngFor="let restaurant of stats()?.favoriteRestaurants" class="list-card" [routerLink]="['/customer/restaurants', restaurant.restaurantId]">
               <div>
                 <strong>{{ restaurant.name }}</strong>
-                <p>{{ restaurant.cuisine }} • {{ restaurant.city }}</p>
+                <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
               </div>
-              <span class="badge-chip">★ {{ restaurant.avgRating || 0 }}</span>
+              <span class="badge-chip">Rating {{ restaurant.avgRating || 0 }}</span>
             </a>
           </div>
 
@@ -89,7 +111,7 @@ import { CustomerStats, Restaurant } from '../../models/app.models';
             <a *ngFor="let order of stats()?.recentOrders" class="list-card" [routerLink]="['/customer/orders', order.orderId]">
               <div>
                 <strong>Order #{{ order.orderId }}</strong>
-                <p>{{ order.items.length }} items • {{ order.orderStatus }}</p>
+                <p>{{ order.items.length }} items | {{ order.orderStatus }}</p>
               </div>
               <span class="badge-chip">Rs {{ order.finalAmount.toFixed(2) }}</span>
             </a>
@@ -114,7 +136,7 @@ import { CustomerStats, Restaurant } from '../../models/app.models';
           <a *ngFor="let restaurant of restaurants()" class="surface-card tile-card" [routerLink]="['/customer/restaurants', restaurant.restaurantId]">
             <div class="tile-hero">{{ restaurant.name.slice(0, 1) }}</div>
             <strong>{{ restaurant.name }}</strong>
-            <p>{{ restaurant.cuisine }} • {{ restaurant.city }}</p>
+            <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
             <div class="meta-row"><span>Status</span><strong>{{ restaurant.isOpen ? 'Open' : 'Closed' }}</strong></div>
           </a>
         </div>
@@ -126,24 +148,77 @@ import { CustomerStats, Restaurant } from '../../models/app.models';
     </ng-container>
   `,
   styles: [`
-    h1 { font-size: clamp(2rem, 3vw, 3rem); }
-    .section-card { padding: 24px; }
-    .compact { margin-bottom: 18px; }
-    .list-card, .tile-card {
+    .section-card,
+    .page-hero {
+      padding: 24px;
+    }
+    .compact {
+      margin-bottom: 18px;
+    }
+    .list-card,
+    .tile-card {
       display: block;
       padding: 18px;
-      border-radius: var(--qb-radius-md);
-      border: 1px solid var(--qb-border);
-      background: linear-gradient(180deg, #fff, #fffaf9);
     }
-    .list-card p, .tile-card p { color: var(--qb-text-muted); margin-top: 6px; }
+    .list-card p,
+    .tile-card p {
+      color: var(--qb-text-muted);
+      margin-top: 6px;
+    }
     .tile-hero {
-      width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center;
-      margin-bottom: 14px; font-size: 1.5rem; font-weight: 700; color: var(--qb-primary);
-      background: linear-gradient(135deg, #ffe7e1, #fff5f0);
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 14px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--qb-primary);
+      background: linear-gradient(135deg, rgba(15, 122, 95, 0.12), rgba(15, 122, 95, 0.04));
     }
-    .cards-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-    @media (max-width: 960px) { .cards-grid { grid-template-columns: 1fr; } }
+    .page-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.7fr);
+      gap: 20px;
+    }
+    .page-hero h2 {
+      margin-bottom: 10px;
+      font-size: clamp(1.7rem, 2.2vw, 2.35rem);
+      line-height: 1.06;
+    }
+    .hero-aside {
+      display: grid;
+      gap: 14px;
+    }
+    .hero-metric {
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+    .hero-metric span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--qb-text-muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+    .hero-metric strong {
+      font-size: 1.6rem;
+      line-height: 1.1;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    @media (max-width: 960px) {
+      .cards-grid,
+      .page-hero {
+        grid-template-columns: 1fr;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

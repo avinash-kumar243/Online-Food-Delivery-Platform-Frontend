@@ -11,9 +11,12 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
   template: `
     <div class="app-shell dashboard-page">
       <header class="topbar surface-card">
-        <div>
-          <strong>QuickBite</strong>
-          <p>{{ roleLabel() }} portal</p>
+        <div class="brand-block">
+          <span class="brand-mark">QB</span>
+          <div>
+            <strong>QuickBite</strong>
+            <p>{{ roleLabel() }} workspace</p>
+          </div>
         </div>
 
         <div class="topbar-actions">
@@ -21,13 +24,16 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
             <span class="avatar">{{ initials() }}</span>
             <span>{{ currentUser()?.email || 'Account' }}</span>
           </button>
-          <button type="button" class="ghost-btn" (click)="logout()">Logout</button>
+          <button type="button" class="ghost-btn logout-btn" (click)="logout()">Logout</button>
         </div>
       </header>
 
       <aside class="sidebar surface-card">
-        <a class="brand" routerLink="/welcome">QuickBite</a>
-        <p class="sidebar-copy">{{ roleLabel() }} workspace</p>
+        <div class="sidebar-head">
+          <a class="brand" routerLink="/welcome">QuickBite</a>
+          <span class="sidebar-badge">{{ roleLabel() }}</span>
+        </div>
+        <p class="sidebar-copy">Operational tools, live data, and account-specific workflows in one place.</p>
 
         <nav class="nav-list">
           <a
@@ -78,11 +84,11 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       min-height: var(--shell-header-height);
       max-height: var(--shell-header-height);
       padding: 0 24px;
-      border-radius: 0;
+      border-radius: 0 0 18px 18px;
       border: 0;
-      backdrop-filter: blur(18px);
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(22px);
+      background: rgba(244, 250, 247, 0.84);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
       overflow: hidden;
     }
 
@@ -94,22 +100,50 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       max-height: calc(100vh - (var(--shell-header-height) + var(--shell-gap) + 18px));
       overflow: auto;
       margin-left: 18px;
-      padding: 28px 22px;
+      padding: 24px 20px;
       align-self: start;
+    }
+
+    .brand-block,
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: inline-grid;
+      place-items: center;
+      font-weight: 800;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--qb-primary), #11936f);
+      box-shadow: 0 12px 20px rgba(15, 122, 95, 0.24);
     }
 
     .brand {
       display: inline-block;
-      font-family: 'Poppins', sans-serif;
-      font-size: 1.7rem;
-      font-weight: 700;
+      font-size: 1.5rem;
+      font-weight: 760;
+      color: var(--qb-text);
+    }
+
+    .sidebar-badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--qb-primary-soft);
       color: var(--qb-primary);
+      font-size: 0.8rem;
+      font-weight: 700;
     }
 
     .sidebar-copy {
-      margin-top: 10px;
+      margin-top: 14px;
       color: var(--qb-text-muted);
       line-height: 1.6;
+      font-size: 0.92rem;
     }
 
     .nav-list {
@@ -121,16 +155,18 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
     .nav-link {
       display: block;
       padding: 14px 16px;
-      border-radius: 16px;
+      border-radius: 12px;
       color: var(--qb-text-muted);
       font-weight: 600;
+      border: 1px solid transparent;
       transition: 0.2s ease;
     }
 
     .nav-link.active,
     .nav-link:hover {
       color: var(--qb-primary);
-      background: var(--qb-primary-soft);
+      background: rgba(15, 122, 95, 0.08);
+      border-color: rgba(15, 122, 95, 0.14);
     }
 
     .content {
@@ -147,7 +183,8 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
 
     .topbar strong {
       display: block;
-      font-size: 1.05rem;
+      font-size: 1rem;
+      font-weight: 760;
       line-height: 1.1;
     }
 
@@ -184,12 +221,16 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
     .avatar {
       width: 34px;
       height: 34px;
-      border-radius: 50%;
+      border-radius: 10px;
       display: inline-grid;
       place-items: center;
       background: var(--qb-primary-soft);
       color: var(--qb-primary);
       font-weight: 700;
+    }
+
+    .logout-btn {
+      min-width: 108px;
     }
 
     .profile-pill span:last-child {

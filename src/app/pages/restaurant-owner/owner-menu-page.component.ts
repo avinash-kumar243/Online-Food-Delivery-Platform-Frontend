@@ -53,6 +53,12 @@ import { RestaurantService } from '../../services/restaurant.service';
     .item-card p { margin-top: 6px; color: var(--qb-text-muted); }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; }
     .disabled-link { pointer-events: none; opacity: 0.6; }
+    @media (max-width: 820px) {
+      .item-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

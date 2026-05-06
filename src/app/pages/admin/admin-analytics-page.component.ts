@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { LoaderComponent } from '../../components/shared/loader.component';
@@ -21,7 +21,7 @@ interface BreakdownItem {
       <div>
         <span class="dashboard-kicker">Admin analytics</span>
         <h1>Operational trends across orders, revenue, and payment flow.</h1>
-        <p class="dashboard-subtitle">This page derives simple analytics from the same live admin APIs used elsewhere in the dashboard.</p>
+        <p class="dashboard-subtitle">This page derives analytics from the same live admin APIs used elsewhere in the dashboard.</p>
       </div>
       <button type="button" class="secondary-btn" (click)="load()">Refresh</button>
     </section>
@@ -40,26 +40,40 @@ interface BreakdownItem {
       <section class="split-layout dashboard-section">
         <article class="surface-card panel-card">
           <div class="panel-header">
-            <strong>Order status breakdown</strong>
-            <span>{{ orders().length }} orders</span>
+            <div>
+              <strong>Order status breakdown</strong>
+              <span>{{ orders().length }} orders</span>
+            </div>
           </div>
-          <div class="stack-list">
-            <div *ngFor="let item of orderBreakdown()" class="meta-row">
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
+          <div class="chart-stack">
+            <div *ngFor="let item of orderBreakdown()" class="chart-row">
+              <div class="chart-copy">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+              <div class="chart-track">
+                <div class="chart-fill" [style.width.%]="orderWidth(item.value)"></div>
+              </div>
             </div>
           </div>
         </article>
 
         <article class="surface-card panel-card">
           <div class="panel-header">
-            <strong>Payment mode breakdown</strong>
-            <span>{{ payments().length }} payments</span>
+            <div>
+              <strong>Payment mode breakdown</strong>
+              <span>{{ payments().length }} payments</span>
+            </div>
           </div>
-          <div class="stack-list">
-            <div *ngFor="let item of paymentModeBreakdown()" class="meta-row">
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
+          <div class="chart-stack">
+            <div *ngFor="let item of paymentModeBreakdown()" class="chart-row">
+              <div class="chart-copy">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+              <div class="chart-track amber">
+                <div class="chart-fill amber" [style.width.%]="paymentWidth(item.value)"></div>
+              </div>
             </div>
           </div>
         </article>
@@ -67,9 +81,48 @@ interface BreakdownItem {
     </ng-container>
   `,
   styles: [`
-    h1 { font-size: clamp(2rem, 3vw, 3rem); }
-    .panel-card { padding: 22px; }
-    .panel-header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px; color: var(--qb-text-muted); }
+    .panel-card {
+      padding: 22px;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      color: var(--qb-text-muted);
+    }
+    .chart-stack {
+      display: grid;
+      gap: 14px;
+    }
+    .chart-row {
+      display: grid;
+      gap: 10px;
+    }
+    .chart-copy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.92rem;
+    }
+    .chart-track {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(15, 122, 95, 0.1);
+      overflow: hidden;
+    }
+    .chart-track.amber {
+      background: rgba(245, 158, 11, 0.12);
+    }
+    .chart-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(135deg, var(--qb-primary), #11936f);
+    }
+    .chart-fill.amber {
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -84,6 +137,8 @@ export class AdminAnalyticsPageComponent {
   readonly payments = signal<Payment[]>([]);
   readonly orderBreakdown = signal<BreakdownItem[]>([]);
   readonly paymentModeBreakdown = signal<BreakdownItem[]>([]);
+  readonly maxOrderValue = computed(() => Math.max(...this.orderBreakdown().map((item) => item.value), 1));
+  readonly maxPaymentValue = computed(() => Math.max(...this.paymentModeBreakdown().map((item) => item.value), 1));
 
   constructor() {
     this.load();
@@ -112,6 +167,14 @@ export class AdminAnalyticsPageComponent {
           this.loading.set(false);
         }
       });
+  }
+
+  orderWidth(value: number): number {
+    return (value / this.maxOrderValue()) * 100;
+  }
+
+  paymentWidth(value: number): number {
+    return (value / this.maxPaymentValue()) * 100;
   }
 
   private buildBreakdown(values: string[]): BreakdownItem[] {

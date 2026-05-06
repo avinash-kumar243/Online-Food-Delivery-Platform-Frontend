@@ -43,6 +43,11 @@ declare global {
 
       <section class="split-layout" *ngIf="cart()?.items?.length">
         <article class="surface-card section-card">
+          <div class="checkout-steps">
+            <span class="step active">1. Review</span>
+            <span class="step active">2. Delivery</span>
+            <span class="step">3. Payment</span>
+          </div>
           <div class="stack-list">
             <div *ngFor="let item of cart()?.items" class="cart-row">
               <div>
@@ -90,13 +95,30 @@ declare global {
     </ng-container>
   `,
   styles: [`
-    h1 { font-size: clamp(2rem, 3vw, 3rem); }
     .section-card { padding: 24px; }
-    .cart-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; border-bottom: 1px solid var(--qb-border); padding-bottom: 16px; }
+    .checkout-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .step {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--qb-text-muted);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+    .step.active {
+      background: var(--qb-primary-soft);
+      color: var(--qb-primary);
+    }
+    .cart-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 18px; }
     .cart-row p { margin-top: 6px; color: var(--qb-text-muted); }
     .cart-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .qty-btn { min-width: 44px; padding: 0; }
-    textarea, select { width: 100%; border-radius: 14px; border: 1px solid var(--qb-border); padding: 12px 14px; margin-top: 8px; }
+    textarea, select { margin-top: 8px; }
     label span { font-weight: 600; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

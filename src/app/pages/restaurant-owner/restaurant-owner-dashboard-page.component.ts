@@ -97,7 +97,24 @@ import { StatsService } from '../../services/stats.service';
     .compact-header h2 { margin: 0; }
     .menu-card .value { font-size: 1.1rem; }
     h1 { font-size: clamp(2rem, 3vw, 3rem); }
-    @media (max-width: 860px) { .approved-actions { flex-direction: column; align-items: flex-start; } }
+    .hero-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+      gap: 18px;
+    }
+    h2 {
+      margin-bottom: 8px;
+      font-size: clamp(1.7rem, 2.1vw, 2.4rem);
+      line-height: 1.08;
+    }
+    @media (max-width: 860px) {
+      .approved-actions,
+      .hero-card {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

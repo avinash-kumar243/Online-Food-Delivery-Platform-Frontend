@@ -42,7 +42,7 @@ import { RestaurantService } from '../../services/restaurant.service';
           <strong>{{ restaurant.name }}</strong>
           <span class="status-chip" [class.status-green]="restaurant.isOpen" [class.status-slate]="!restaurant.isOpen">{{ restaurant.isOpen ? 'Open' : 'Closed' }}</span>
         </div>
-        <p>{{ restaurant.cuisine }} • {{ restaurant.city }}</p>
+        <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
         <p>{{ restaurant.address }}</p>
         <div class="meta-row"><span>Rating</span><strong>{{ restaurant.avgRating || 0 }}</strong></div>
         <div class="meta-row"><span>Min order</span><strong>Rs {{ restaurant.minOrderAmount }}</strong></div>
@@ -58,26 +58,48 @@ import { RestaurantService } from '../../services/restaurant.service';
     </ng-template>
   `,
   styles: [`
-    h1 { font-size: clamp(2rem, 3vw, 3rem); }
     .filters-card {
       display: grid;
       grid-template-columns: 2fr 1fr 1fr;
       gap: 14px;
       padding: 18px;
     }
-    input, select {
-      min-height: 48px; border-radius: 14px; border: 1px solid var(--qb-border); padding: 0 14px; background: #fff;
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
     }
-    .cards-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-    .restaurant-card { padding: 20px; }
+    .restaurant-card {
+      padding: 20px;
+    }
     .restaurant-hero {
-      width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center;
-      margin-bottom: 16px; color: var(--qb-primary); font-size: 1.45rem; font-weight: 700; background: var(--qb-primary-soft);
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 16px;
+      color: var(--qb-primary);
+      font-size: 1.45rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, rgba(15, 122, 95, 0.12), rgba(15, 122, 95, 0.04));
     }
-    .restaurant-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
-    .restaurant-card p { margin-top: 8px; color: var(--qb-text-muted); line-height: 1.5; }
+    .restaurant-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    .restaurant-card p {
+      margin-top: 8px;
+      color: var(--qb-text-muted);
+      line-height: 1.5;
+    }
     @media (max-width: 960px) {
-      .filters-card, .cards-grid { grid-template-columns: 1fr; }
+      .filters-card,
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

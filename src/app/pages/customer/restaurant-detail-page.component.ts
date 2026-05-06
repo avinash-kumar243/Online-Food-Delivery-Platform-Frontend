@@ -18,7 +18,7 @@ import { getErrorMessage } from '../../services/api.utils';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, LoaderComponent, EmptyStateComponent],
   template: `
-    <a routerLink="/customer/restaurants" class="ghost-btn">Back to restaurants</a>
+    <a routerLink="/customer/restaurants" class="ghost-btn back-btn">Back to restaurants</a>
 
     <app-loader *ngIf="loading()"></app-loader>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
@@ -44,6 +44,21 @@ import { getErrorMessage } from '../../services/api.utils';
       <section class="dashboard-section" *ngIf="filteredItems().length; else noItems">
         <div class="cards-grid">
           <article *ngFor="let item of filteredItems()" class="surface-card menu-card">
+            <ng-container *ngIf="getItemImageUrl(item) as imageUrl; else imageFallback">
+              <img
+                *ngIf="imageUrl"
+                class="menu-card-image"
+                [src]="imageUrl"
+                [alt]="item.name"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                (error)="markImageBroken(item.itemId)" />
+            </ng-container>
+            <ng-template #imageFallback>
+              <div class="menu-card-image menu-card-image-fallback" aria-hidden="true">
+                <span>{{ item.isVeg ? 'Veg' : 'Food' }}</span>
+              </div>
+            </ng-template>
             <div class="menu-card-top">
               <div>
                 <strong>{{ item.name }}</strong>
@@ -67,14 +82,61 @@ import { getErrorMessage } from '../../services/api.utils';
     </ng-container>
   `,
   styles: [`
-    h1 { font-size: clamp(2rem, 3vw, 3rem); margin: 8px 0 10px; }
-    .hero-card, .filters-card, .menu-card { padding: 22px; }
-    .filters-card input { min-height: 48px; width: 100%; border-radius: 14px; border: 1px solid var(--qb-border); padding: 0 14px; }
-    .cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-    .menu-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-    .menu-card p { color: var(--qb-text-muted); }
-    .description { margin: 14px 0; line-height: 1.6; }
-    @media (max-width: 860px) { .cards-grid { grid-template-columns: 1fr; } }
+    .back-btn {
+      width: fit-content;
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-size: clamp(2rem, 3vw, 3rem);
+      margin: 8px 0 10px;
+    }
+    .hero-card,
+    .filters-card,
+    .menu-card {
+      padding: 22px;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .menu-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .menu-card-image {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      border-radius: 18px;
+      display: block;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, rgba(20, 138, 104, 0.12), rgba(255, 255, 255, 0.9));
+    }
+    .menu-card-image-fallback {
+      display: grid;
+      place-items: center;
+      color: var(--qb-text-muted);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .menu-card p {
+      color: var(--qb-text-muted);
+    }
+    .description {
+      margin: 14px 0;
+      line-height: 1.6;
+      min-height: 52px;
+    }
+    @media (max-width: 860px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -93,6 +155,7 @@ export class RestaurantDetailPageComponent {
   readonly menu = signal<RestaurantMenu | null>(null);
   readonly filteredItems = signal<MenuItem[]>([]);
   readonly addingItemId = signal<number | null>(null);
+  readonly brokenImages = signal<Record<number, boolean>>({});
 
   query = '';
 
@@ -153,5 +216,17 @@ export class RestaurantDetailPageComponent {
           this.addingItemId.set(null);
         }
       });
+  }
+
+  getItemImageUrl(item: MenuItem): string {
+    if (this.brokenImages()[item.itemId]) {
+      return '';
+    }
+
+    return item.imageUrl?.trim() || '';
+  }
+
+  markImageBroken(itemId: number): void {
+    this.brokenImages.update((state) => ({ ...state, [itemId]: true }));
   }
 }

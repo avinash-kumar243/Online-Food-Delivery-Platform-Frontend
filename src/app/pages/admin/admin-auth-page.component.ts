@@ -28,12 +28,46 @@ import { AuthService } from '../../services/auth.service';
     </section>
   `,
   styles: [`
-    .auth-page{min-height:100vh;display:grid;place-items:center;padding:24px}
-    .auth-card{width:min(460px,100%);padding:28px;display:grid;gap:16px}
-    h1{font-size:2rem}
-    label span{display:block;margin-bottom:8px;font-weight:600}
-    input{width:100%;min-height:48px;border:1px solid var(--qb-border);border-radius:14px;padding:0 14px}
-    .error-text{color:#dc2626}
+    .auth-page {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(15, 122, 95, 0.16), transparent 24rem),
+        radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 22rem),
+        linear-gradient(180deg, #f3faf7 0%, #f7fafc 44%, #eef4f8 100%);
+    }
+    .auth-card {
+      width: min(460px, 100%);
+      padding: 28px;
+      display: grid;
+      gap: 16px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: var(--qb-shadow);
+      backdrop-filter: blur(22px);
+    }
+    h1 {
+      font-size: 2.1rem;
+      line-height: 1.04;
+    }
+    label {
+      display: grid;
+      gap: 8px;
+    }
+    label span {
+      font-weight: 600;
+    }
+    .error-text {
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(194, 65, 61, 0.1);
+      border: 1px solid rgba(194, 65, 61, 0.16);
+      color: var(--qb-danger);
+      font-weight: 600;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
