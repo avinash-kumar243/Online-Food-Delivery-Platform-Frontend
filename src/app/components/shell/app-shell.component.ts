@@ -98,8 +98,13 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
 
       <aside class="sidebar surface-card" [class.sidebar-open]="isMobileNavOpen()">
         <div class="sidebar-head">
-          <a class="brand" routerLink="/welcome">QuickBite</a>
-          <span class="sidebar-badge">{{ activeRoleLabel() }}</span>
+          <ng-container *ngIf="showsStandaloneRoleBadge(); else defaultSidebarBrand">
+            <span class="sidebar-badge sidebar-badge-standalone">{{ activeRoleLabel() }}</span>
+          </ng-container>
+          <ng-template #defaultSidebarBrand>
+            <a class="brand" routerLink="/welcome">QuickBite</a>
+            <span class="sidebar-badge">{{ activeRoleLabel() }}</span>
+          </ng-template>
         </div>
         <p class="sidebar-copy">{{ sidebarCopy() }}</p>
 
@@ -198,7 +203,7 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
     .sidebar-head {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       min-width: 0;
     }
 
@@ -220,6 +225,9 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       font-size: 1.5rem;
       font-weight: 760;
       color: var(--qb-text);
+      margin-left: 2px;
+      margin-right: 6px;
+      flex: 0 1 auto;
     }
 
     .sidebar-badge {
@@ -229,6 +237,12 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       color: var(--qb-primary);
       font-size: 0.8rem;
       font-weight: 700;
+      margin-left: 6px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-badge-standalone {
+      margin-left: 0;
     }
 
     .sidebar-copy {
@@ -370,13 +384,17 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       position: absolute;
       top: calc(100% + 12px);
       right: 0;
-      width: min(320px, calc(100vw - 24px));
-      padding: 12px;
+      width: auto;
+      min-width: 220px;
+      max-width: min(280px, calc(100vw - 24px));
+      padding: 14px;
       border-radius: 20px;
       background: rgba(255, 255, 255, 0.95);
       z-index: 80;
       display: grid;
-      gap: 10px;
+      gap: 12px;
+      justify-items: center;
+      text-align: center;
     }
 
     .guest-copy {
@@ -410,11 +428,13 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
 
     .profile-identity {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 12px;
-      padding: 6px;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 6px;
       border-radius: 16px;
-      text-align: left;
+      text-align: center;
     }
 
     .profile-action {
@@ -429,6 +449,7 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       display: grid;
       gap: 2px;
       min-width: 0;
+      justify-items: center;
     }
 
     .profile-copy strong,
@@ -436,6 +457,7 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      max-width: 100%;
     }
 
     .profile-copy small {
@@ -446,12 +468,16 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
     .dropdown-action {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      min-height: 46px;
+      justify-content: center;
+      min-height: 42px;
       padding: 0 10px;
       border-radius: 14px;
       color: var(--qb-danger);
       font-weight: 700;
+    }
+
+    .profile-action {
+      color: var(--qb-text);
     }
 
     .app-shell-main {
@@ -535,6 +561,12 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       .guest-actions {
         grid-template-columns: 1fr;
       }
+
+      .profile-dropdown {
+        min-width: 210px;
+        max-width: min(260px, calc(100vw - 20px));
+        right: 0;
+      }
     }
 
     @media (max-width: 540px) {
@@ -546,6 +578,10 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
         gap: 10px;
       }
 
+      .sidebar-head {
+        gap: 10px;
+      }
+
       .brand-mark {
         width: 38px;
         height: 38px;
@@ -554,6 +590,15 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
 
       .brand-block strong {
         font-size: 0.98rem;
+      }
+
+      .brand {
+        margin-right: 2px;
+      }
+
+      .sidebar-badge {
+        margin-left: 2px;
+        padding-inline: 10px;
       }
     }
   `],
@@ -579,6 +624,13 @@ export class AppShellComponent {
   readonly isProfileMenuOpen = signal(false);
   readonly isCustomerContext = computed(() => this.activeRole() === 'CUSTOMER');
   readonly isGuestCustomer = computed(() => this.isCustomerContext() && !this.customerAccessService.isCustomerLoggedIn());
+  readonly showsStandaloneRoleBadge = computed(() => {
+    const role = this.activeRole();
+    return role === 'CUSTOMER'
+      || role === 'RESTAURANT_OWNER'
+      || role === 'DELIVERY_PARTNER'
+      || role === 'ADMIN';
+  });
   readonly sidebarCopy = computed(() => this.isCustomerContext()
     ? 'Browse restaurants, menus, offers, and featured dishes. Login only when you want to order or save personal data.'
     : 'Operational tools, live data, and account-specific workflows in one place.');
