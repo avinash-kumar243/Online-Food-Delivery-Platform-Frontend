@@ -130,6 +130,15 @@ declare global {
       color: #92400e;
       background: rgba(245, 158, 11, 0.16);
     }
+    @media (max-width: 760px) {
+      .cart-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .cart-actions {
+        justify-content: flex-start;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -346,7 +355,7 @@ export class CustomerCartPageComponent {
           },
           method: this.razorpayMethods(this.paymentMethod),
           prefill: {
-            name: this.authService.getCurrentUser()?.email?.split('@')[0] ?? 'QuickBite Customer',
+            name: this.authService.getCurrentUser()?.fullName ?? 'QuickBite Customer',
             email: this.authService.getCurrentUser()?.email ?? ''
           },
           handler: (response: Record<string, unknown>) => {

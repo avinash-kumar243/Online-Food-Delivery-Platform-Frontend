@@ -12,6 +12,8 @@ export class AuthService {
   private static readonly ROLE_KEY = 'userRole';
   private static readonly EMAIL_KEY = 'authEmail';
   private static readonly USER_ID_KEY = 'authUserId';
+  private static readonly FULL_NAME_KEY = 'authFullName';
+  private static readonly PROFILE_PIC_KEY = 'authProfilePicUrl';
 
   private http = inject(HttpClient);
   private router = inject(Router);
@@ -135,10 +137,33 @@ export class AuthService {
 
     const role = this.normalizeRole(response.role ?? response.userRole ?? response.userType) ?? fallbackRole;
     const id = response.id ?? response.userId ?? response.customerId ?? response.ownerId ?? response.partnerId;
-    this.persistSession(response.token.trim(), role, response.email, id);
+    this.persistSession(response.token.trim(), role, response.email, id, response.fullName, response.profilePicUrl);
   }
 
-  private persistSession(token: string, role: UserRole, email?: string, id?: number): void {
+  updateCurrentUserProfile(profile: { email?: string | null; fullName?: string | null; profilePicUrl?: string | null }): void {
+    const currentUser = this.resolveCurrentUser();
+    if (!currentUser) {
+      return;
+    }
+
+    this.persistSession(
+      currentUser.token,
+      currentUser.role,
+      profile.email ?? currentUser.email ?? undefined,
+      currentUser.id ?? undefined,
+      profile.fullName ?? currentUser.fullName ?? undefined,
+      profile.profilePicUrl ?? currentUser.profilePicUrl ?? undefined
+    );
+  }
+
+  private persistSession(
+    token: string,
+    role: UserRole,
+    email?: string,
+    id?: number,
+    fullName?: string | null,
+    profilePicUrl?: string | null
+  ): void {
     this.storage.setItem(AuthService.TOKEN_KEY, token.trim());
     this.storage.setItem(AuthService.ROLE_KEY, role);
 
@@ -152,6 +177,14 @@ export class AuthService {
     const resolvedId = id ?? tokenId;
     if (resolvedId !== null && resolvedId !== undefined && Number.isFinite(Number(resolvedId))) {
       this.storage.setItem(AuthService.USER_ID_KEY, String(resolvedId));
+    }
+
+    if (typeof fullName === 'string' && fullName.trim()) {
+      this.storage.setItem(AuthService.FULL_NAME_KEY, fullName.trim());
+    }
+
+    if (typeof profilePicUrl === 'string' && profilePicUrl.trim()) {
+      this.storage.setItem(AuthService.PROFILE_PIC_KEY, profilePicUrl.trim());
     }
 
     this.currentUserSubject.next(this.resolveCurrentUser());
@@ -175,7 +208,9 @@ export class AuthService {
       token,
       role,
       email: this.storage.getItem(AuthService.EMAIL_KEY) ?? this.getEmailFromToken(token),
-      id: Number.isFinite(parsedId) ? parsedId : null
+      id: Number.isFinite(parsedId) ? parsedId : null,
+      fullName: this.storage.getItem(AuthService.FULL_NAME_KEY),
+      profilePicUrl: this.storage.getItem(AuthService.PROFILE_PIC_KEY)
     };
   }
 
@@ -184,10 +219,14 @@ export class AuthService {
     this.storage.removeItem(AuthService.ROLE_KEY);
     this.storage.removeItem(AuthService.EMAIL_KEY);
     this.storage.removeItem(AuthService.USER_ID_KEY);
+    this.storage.removeItem(AuthService.FULL_NAME_KEY);
+    this.storage.removeItem(AuthService.PROFILE_PIC_KEY);
     localStorage.removeItem(AuthService.TOKEN_KEY);
     localStorage.removeItem(AuthService.ROLE_KEY);
     localStorage.removeItem(AuthService.EMAIL_KEY);
     localStorage.removeItem(AuthService.USER_ID_KEY);
+    localStorage.removeItem(AuthService.FULL_NAME_KEY);
+    localStorage.removeItem(AuthService.PROFILE_PIC_KEY);
   }
 
   private get storage(): Storage {
@@ -208,6 +247,8 @@ export class AuthService {
     const legacyRole = localStorage.getItem(AuthService.ROLE_KEY);
     const legacyEmail = localStorage.getItem(AuthService.EMAIL_KEY);
     const legacyUserId = localStorage.getItem(AuthService.USER_ID_KEY);
+    const legacyFullName = localStorage.getItem(AuthService.FULL_NAME_KEY);
+    const legacyProfilePic = localStorage.getItem(AuthService.PROFILE_PIC_KEY);
 
     sessionStorage.setItem(AuthService.TOKEN_KEY, legacyToken);
     if (legacyRole) {
@@ -219,11 +260,19 @@ export class AuthService {
     if (legacyUserId) {
       sessionStorage.setItem(AuthService.USER_ID_KEY, legacyUserId);
     }
+    if (legacyFullName) {
+      sessionStorage.setItem(AuthService.FULL_NAME_KEY, legacyFullName);
+    }
+    if (legacyProfilePic) {
+      sessionStorage.setItem(AuthService.PROFILE_PIC_KEY, legacyProfilePic);
+    }
 
     localStorage.removeItem(AuthService.TOKEN_KEY);
     localStorage.removeItem(AuthService.ROLE_KEY);
     localStorage.removeItem(AuthService.EMAIL_KEY);
     localStorage.removeItem(AuthService.USER_ID_KEY);
+    localStorage.removeItem(AuthService.FULL_NAME_KEY);
+    localStorage.removeItem(AuthService.PROFILE_PIC_KEY);
   }
 
   private roleFromEndpoint(endpoint: string): UserRole {

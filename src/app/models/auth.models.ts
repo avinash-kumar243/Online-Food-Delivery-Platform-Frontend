@@ -13,6 +13,7 @@ export interface AuthResponse {
   partnerId?: number;
   email?: string;
   fullName?: string;
+  profilePicUrl?: string | null;
 }
 
 export interface CurrentUser {
@@ -20,6 +21,8 @@ export interface CurrentUser {
   role: UserRole;
   email: string | null;
   id: number | null;
+  fullName?: string | null;
+  profilePicUrl?: string | null;
 }
 
 export interface OtpResponse {

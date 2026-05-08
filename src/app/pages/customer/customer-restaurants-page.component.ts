@@ -101,6 +101,12 @@ import { RestaurantService } from '../../services/restaurant.service';
         grid-template-columns: 1fr;
       }
     }
+    @media (max-width: 640px) {
+      .restaurant-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

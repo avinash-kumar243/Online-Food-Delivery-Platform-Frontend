@@ -55,6 +55,7 @@ import { getErrorMessage } from '../../services/api.utils';
     label span{display:block;font-weight:600;margin-bottom:8px}
     input,textarea,select{width:100%;border:1px solid var(--qb-border);border-radius:14px;padding:12px 14px}
     .full{grid-column:1/-1}
+    @media (max-width:860px){.form-grid{grid-template-columns:1fr}}
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

@@ -48,6 +48,15 @@ import { getAllowedNextStatuses, ORDER_LABELS } from '../../shared/order-flow';
     .order-card { padding: 20px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .status-pill { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--qb-surface-soft, #f4f4f5); color: var(--qb-text, #18181b); font-weight: 600; }
+    @media (max-width: 760px) {
+      .order-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .actions {
+        align-items: stretch;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

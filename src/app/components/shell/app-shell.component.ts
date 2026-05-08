@@ -1,7 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
+import { CurrentUser, UserRole } from '../../models/auth.models';
+import { AdminService } from '../../services/admin.service';
 import { AuthService } from '../../services/auth.service';
+import { ProfileService } from '../../services/profile.service';
 import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
 
 @Component({
@@ -11,24 +16,72 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
   template: `
     <div class="app-shell dashboard-page">
       <header class="topbar surface-card">
-        <div class="brand-block">
-          <span class="brand-mark">QB</span>
-          <div>
-            <strong>QuickBite</strong>
-            <p>{{ roleLabel() }} workspace</p>
+        <div class="topbar-start">
+          <button
+            type="button"
+            class="icon-toggle nav-toggle"
+            (click)="toggleMobileNav($event)"
+            [attr.aria-expanded]="isMobileNavOpen()"
+            aria-label="Toggle navigation menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <div class="brand-block">
+            <span class="brand-mark">QB</span>
+            <div>
+              <strong>QuickBite</strong>
+              <p>{{ roleLabel() }} workspace</p>
+            </div>
           </div>
         </div>
 
         <div class="topbar-actions">
-          <button type="button" class="profile-pill secondary-btn" (click)="goToAccount()">
-            <span class="avatar">{{ initials() }}</span>
-            <span>{{ currentUser()?.email || 'Account' }}</span>
+          <button
+            type="button"
+            class="icon-toggle account-toggle"
+            (click)="toggleProfileMenu($event)"
+            [attr.aria-expanded]="isProfileMenuOpen()"
+            aria-label="Open profile menu">
+            <ng-container *ngIf="profileImageUrl(); else avatarFallback">
+              <img class="avatar-image" [src]="profileImageUrl()!" alt="" />
+            </ng-container>
+            <ng-template #avatarFallback>
+              <span class="avatar-fallback">{{ avatarInitials() }}</span>
+            </ng-template>
           </button>
-          <button type="button" class="ghost-btn logout-btn" (click)="logout()">Logout</button>
+
+          <div class="profile-dropdown surface-card" *ngIf="isProfileMenuOpen()" (click)="stopEvent($event)">
+            <button type="button" class="profile-identity" (click)="goToAccount()">
+              <span class="profile-avatar">
+                <ng-container *ngIf="profileImageUrl(); else dropdownAvatarFallback">
+                  <img class="avatar-image" [src]="profileImageUrl()!" alt="" />
+                </ng-container>
+                <ng-template #dropdownAvatarFallback>
+                  <span class="avatar-fallback">{{ avatarInitials() }}</span>
+                </ng-template>
+              </span>
+              <span class="profile-copy">
+                <strong>{{ displayName() }}</strong>
+                <small>{{ roleLabel() }}</small>
+              </span>
+            </button>
+
+            <button type="button" class="dropdown-action" (click)="logout()">Logout</button>
+          </div>
         </div>
       </header>
 
-      <aside class="sidebar surface-card">
+      <button
+        type="button"
+        class="shell-backdrop"
+        *ngIf="isMobileNavOpen()"
+        (click)="closeMobileNav()"
+        aria-label="Close navigation">
+      </button>
+
+      <aside class="sidebar surface-card" [class.sidebar-open]="isMobileNavOpen()">
         <div class="sidebar-head">
           <a class="brand" routerLink="/welcome">QuickBite</a>
           <span class="sidebar-badge">{{ roleLabel() }}</span>
@@ -40,6 +93,7 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
             *ngFor="let item of navItems()"
             [routerLink]="item.path"
             routerLinkActive="active"
+            (click)="closeMobileNav()"
             class="nav-link">
             {{ item.label }}
           </a>
@@ -80,16 +134,20 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       justify-content: space-between;
       gap: 18px;
       width: 100%;
-      height: var(--shell-header-height);
       min-height: var(--shell-header-height);
-      max-height: var(--shell-header-height);
-      padding: 0 24px;
+      padding: 12px 24px;
       border-radius: 0 0 18px 18px;
       border: 0;
       backdrop-filter: blur(22px);
-      background: rgba(244, 250, 247, 0.84);
+      background: rgba(244, 250, 247, 0.9);
       box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
-      overflow: hidden;
+    }
+
+    .topbar-start {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
     }
 
     .sidebar {
@@ -102,6 +160,7 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       margin-left: 18px;
       padding: 24px 20px;
       align-self: start;
+      z-index: 70;
     }
 
     .brand-block,
@@ -109,6 +168,7 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       display: flex;
       align-items: center;
       gap: 12px;
+      min-width: 0;
     }
 
     .brand-mark {
@@ -121,6 +181,7 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       color: #ffffff;
       background: linear-gradient(135deg, var(--qb-primary), #11936f);
       box-shadow: 0 12px 20px rgba(15, 122, 95, 0.24);
+      flex-shrink: 0;
     }
 
     .brand {
@@ -193,49 +254,140 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       margin-top: 2px;
       font-size: 0.82rem;
       line-height: 1.1;
-      white-space: nowrap;
     }
 
     .topbar-actions {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 12px;
       flex-shrink: 0;
-      white-space: nowrap;
     }
 
-    .profile-pill {
+    .icon-toggle {
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--qb-shadow-soft);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .icon-toggle:hover {
+      transform: translateY(-1px);
+      border-color: rgba(15, 122, 95, 0.18);
+    }
+
+    .nav-toggle {
+      display: none;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border-radius: 14px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .nav-toggle span {
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--qb-text);
+    }
+
+    .account-toggle,
+    .profile-avatar {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      min-width: 0;
-      max-width: 320px;
-      min-height: 44px;
-      height: 44px;
-      padding-inline: 12px 16px;
-      white-space: nowrap;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border-radius: 999px;
       overflow: hidden;
-      text-overflow: ellipsis;
+      flex-shrink: 0;
     }
 
-    .avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-fallback {
       display: inline-grid;
       place-items: center;
-      background: var(--qb-primary-soft);
-      color: var(--qb-primary);
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--qb-primary), #11936f);
+      color: #ffffff;
       font-weight: 700;
     }
 
-    .logout-btn {
-      min-width: 108px;
+    .profile-dropdown {
+      position: absolute;
+      top: calc(100% + 12px);
+      right: 0;
+      width: min(280px, calc(100vw - 24px));
+      padding: 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 80;
     }
 
-    .profile-pill span:last-child {
+    .profile-identity,
+    .dropdown-action {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .profile-identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px;
+      border-radius: 16px;
+      text-align: left;
+    }
+
+    .profile-identity:hover,
+    .dropdown-action:hover {
+      background: rgba(15, 122, 95, 0.06);
+    }
+
+    .profile-copy {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .profile-copy strong,
+    .profile-copy small {
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .profile-copy small {
+      color: var(--qb-text-muted);
+      font-size: 0.8rem;
+    }
+
+    .dropdown-action {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 46px;
+      margin-top: 8px;
+      padding: 0 10px;
+      border-radius: 14px;
+      color: var(--qb-danger);
+      font-weight: 700;
     }
 
     .app-shell-main {
@@ -248,6 +400,10 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       justify-content: flex-start;
       padding-top: 0;
       overflow: auto;
+    }
+
+    .shell-backdrop {
+      display: none;
     }
 
     @media (max-width: 1080px) {
@@ -264,11 +420,36 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       }
 
       .sidebar {
-        position: sticky;
-        top: calc(var(--shell-header-height) + var(--shell-gap));
-        height: auto;
-        max-height: none;
-        margin-right: 18px;
+        position: fixed;
+        top: calc(var(--shell-header-height) + 10px);
+        left: 12px;
+        width: min(320px, calc(100vw - 24px));
+        max-height: calc(100vh - var(--shell-header-height) - 24px);
+        margin-left: 0;
+        margin-right: 0;
+        transform: translateX(calc(-100% - 24px));
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.24s ease, opacity 0.24s ease;
+      }
+
+      .sidebar.sidebar-open {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .nav-toggle {
+        display: inline-flex;
+      }
+
+      .shell-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        border: 0;
+        background: rgba(15, 23, 42, 0.24);
       }
 
       .app-shell-main {
@@ -282,13 +463,8 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
         padding-inline: 14px;
       }
 
-      .profile-pill {
-        max-width: 220px;
-      }
-
-      .sidebar {
-        margin-left: 12px;
-        margin-right: 12px;
+      .topbar p {
+        display: none;
       }
 
       .content {
@@ -297,19 +473,98 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
         padding-left: 12px;
       }
     }
+
+    @media (max-width: 540px) {
+      .topbar {
+        gap: 10px;
+      }
+
+      .brand-block {
+        gap: 10px;
+      }
+
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+      }
+
+      .brand-block strong {
+        font-size: 0.98rem;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly profileService = inject(ProfileService);
+  private readonly adminService = inject(AdminService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  readonly currentUser = computed(() => this.authService.getCurrentUser());
+  readonly currentUser = signal<CurrentUser | null>(this.authService.getCurrentUser());
   readonly navItems = computed(() => ROLE_NAV_ITEMS[this.currentUser()?.role ?? 'CUSTOMER']);
   readonly roleLabel = computed(() => ROLE_LABELS[this.currentUser()?.role ?? 'CUSTOMER']);
-  readonly initials = computed(() => (this.currentUser()?.email?.slice(0, 2) ?? 'QB').toUpperCase());
+  readonly displayName = computed(() => this.currentUser()?.fullName?.trim() || this.currentUser()?.email || 'QuickBite user');
+  readonly avatarInitials = computed(() => this.buildInitials(this.currentUser()?.fullName, this.currentUser()?.email));
+  readonly profileImageUrl = computed(() => this.currentUser()?.profilePicUrl?.trim() || '');
+  readonly isMobileNavOpen = signal(false);
+  readonly isProfileMenuOpen = signal(false);
+
+  private hydratedProfileKey: string | null = null;
+
+  constructor() {
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((user) => {
+        this.currentUser.set(user);
+        this.hydrateProfile(user);
+      });
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.closeMobileNav();
+        this.closeProfileMenu();
+      });
+  }
+
+  @HostListener('document:click')
+  closeMenusFromDocument(): void {
+    this.closeMobileNav();
+    this.closeProfileMenu();
+  }
+
+  stopEvent(event: Event): void {
+    event.stopPropagation();
+  }
+
+  toggleMobileNav(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isMobileNavOpen.update((open) => !open);
+    this.isProfileMenuOpen.set(false);
+  }
+
+  closeMobileNav(): void {
+    this.isMobileNavOpen.set(false);
+  }
+
+  toggleProfileMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isProfileMenuOpen.update((open) => !open);
+    this.isMobileNavOpen.set(false);
+  }
+
+  closeProfileMenu(): void {
+    this.isProfileMenuOpen.set(false);
+  }
 
   goToAccount(): void {
+    this.closeProfileMenu();
     const role = this.currentUser()?.role;
     if (!role) {
       return;
@@ -327,6 +582,93 @@ export class AppShellComponent {
   }
 
   logout(): void {
+    this.closeProfileMenu();
     this.authService.logout();
+  }
+
+  private hydrateProfile(user: CurrentUser | null): void {
+    if (!user?.id) {
+      this.hydratedProfileKey = null;
+      return;
+    }
+
+    const profileKey = `${user.role}:${user.id}`;
+    if (this.hydratedProfileKey === profileKey && user.fullName) {
+      return;
+    }
+
+    this.hydratedProfileKey = profileKey;
+
+    if (user.role === 'CUSTOMER') {
+      this.profileService.getCustomerProfile(user.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (profile) => this.authService.updateCurrentUserProfile({
+            email: profile.email,
+            fullName: profile.fullName,
+            profilePicUrl: profile.profilePicUrl ?? null
+          }),
+          error: () => undefined
+        });
+      return;
+    }
+
+    if (user.role === 'RESTAURANT_OWNER') {
+      this.profileService.getRestaurantOwnerProfile(user.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (profile) => this.authService.updateCurrentUserProfile({
+            email: profile.email,
+            fullName: profile.fullName,
+            profilePicUrl: profile.profilePicUrl ?? null
+          }),
+          error: () => undefined
+        });
+      return;
+    }
+
+    if (user.role === 'DELIVERY_PARTNER') {
+      this.profileService.getDeliveryPartnerProfile(user.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (profile) => this.authService.updateCurrentUserProfile({
+            email: profile.email,
+            fullName: profile.fullName,
+            profilePicUrl: profile.profilePicUrl ?? null
+          }),
+          error: () => undefined
+        });
+      return;
+    }
+
+    this.adminService.getUsers()
+      .pipe(
+        map((users) => users.find((item) => item.id === user.id)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (profile) => {
+          if (!profile) {
+            return;
+          }
+
+          this.authService.updateCurrentUserProfile({
+            email: profile.email,
+            fullName: profile.fullName
+          });
+        },
+        error: () => undefined
+      });
+  }
+
+  private buildInitials(fullName?: string | null, email?: string | null): string {
+    const name = fullName?.trim();
+    if (name) {
+      const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
+      return parts.map((part) => part[0]?.toUpperCase() ?? '').join('') || 'QB';
+    }
+
+    const fallback = email?.split('@')[0]?.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2);
+    return (fallback || 'QB').toUpperCase();
   }
 }
