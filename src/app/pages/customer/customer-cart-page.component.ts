@@ -10,7 +10,8 @@ import { CartService } from '../../services/cart.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
 import { PaymentService, RazorpayOrderPayload } from '../../services/payment.service';
-import { PlaceOrderRequest, Cart } from '../../models/app.models';
+import { RestaurantService } from '../../services/restaurant.service';
+import { PlaceOrderRequest, Cart, Restaurant } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
 
 declare global {
@@ -66,6 +67,9 @@ declare global {
 
         <article class="surface-card section-card">
           <div class="stack-list">
+            <section *ngIf="currentRestaurant() as restaurant" class="closed-notice" [hidden]="restaurant.isOpen">
+              {{ restaurant.name }} is currently closed. You can keep the items in your cart, but checkout is disabled until the restaurant reopens.
+            </section>
             <label>
               <span>Delivery address</span>
               <textarea [(ngModel)]="deliveryAddress" rows="3"></textarea>
@@ -86,8 +90,8 @@ declare global {
             <div class="meta-row"><span>Subtotal</span><strong>Rs {{ totals.subtotal.toFixed(2) }}</strong></div>
             <div class="meta-row"><span>Taxes</span><strong>Rs {{ totals.taxes.toFixed(2) }}</strong></div>
             <div class="meta-row"><span>Grand total</span><strong>Rs {{ totals.grandTotal.toFixed(2) }}</strong></div>
-            <button type="button" class="primary-btn" [disabled]="placingOrder()" (click)="placeOrder()">
-              {{ placingOrder() ? 'Placing order...' : 'Place order' }}
+            <button type="button" class="primary-btn" [disabled]="placingOrder() || !canPlaceOrder()" (click)="placeOrder()">
+              {{ !canPlaceOrder() ? 'Restaurant closed' : placingOrder() ? 'Placing order...' : 'Place order' }}
             </button>
           </div>
         </article>
@@ -120,6 +124,12 @@ declare global {
     .qty-btn { min-width: 44px; padding: 0; }
     textarea, select { margin-top: 8px; }
     label span { font-weight: 600; }
+    .closed-notice {
+      padding: 12px 14px;
+      border-radius: 14px;
+      color: #92400e;
+      background: rgba(245, 158, 11, 0.16);
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -131,6 +141,7 @@ export class CustomerCartPageComponent {
   private readonly orderService = inject(OrderService);
   private readonly paymentService = inject(PaymentService);
   private readonly notificationService = inject(NotificationService);
+  private readonly restaurantService = inject(RestaurantService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -138,6 +149,7 @@ export class CustomerCartPageComponent {
   readonly error = signal('');
   readonly cart = signal<Cart | null>(null);
   readonly placingOrder = signal(false);
+  readonly currentRestaurant = signal<Restaurant | null>(null);
   private checkoutReference: string | null = null;
 
   deliveryAddress = '';
@@ -165,6 +177,7 @@ export class CustomerCartPageComponent {
       .subscribe({
         next: (cart) => {
           this.cart.set(cart);
+          this.loadRestaurant(cart.restaurantId);
           this.loading.set(false);
         },
         error: (error) => {
@@ -184,7 +197,10 @@ export class CustomerCartPageComponent {
     this.cartService.updateQuantityByMenuItem(customerId, menuItemId, quantity)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (cart) => this.cart.set(cart),
+        next: (cart) => {
+          this.cart.set(cart);
+          this.loadRestaurant(cart.restaurantId);
+        },
         error: (error) => this.notificationService.error(getErrorMessage(error))
       });
   }
@@ -198,6 +214,7 @@ export class CustomerCartPageComponent {
       .subscribe({
         next: (cart) => {
           this.cart.set(cart);
+          this.loadRestaurant(cart.restaurantId);
           this.notificationService.success('Item removed from cart.');
         },
         error: (error) => this.notificationService.error(getErrorMessage(error))
@@ -212,6 +229,10 @@ export class CustomerCartPageComponent {
     }
     if (!this.deliveryAddress.trim()) {
       this.notificationService.error('Delivery address is required.');
+      return;
+    }
+    if (!this.canPlaceOrder()) {
+      this.notificationService.error('This restaurant is currently closed. Checkout is disabled until it reopens.');
       return;
     }
 
@@ -413,6 +434,25 @@ export class CustomerCartPageComponent {
 
   private buildCheckoutReference(customerId: number, restaurantId: number): string {
     return `qb-${customerId}-${restaurantId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  canPlaceOrder(): boolean {
+    const restaurant = this.currentRestaurant();
+    return restaurant ? restaurant.isOpen : true;
+  }
+
+  private loadRestaurant(restaurantId: number | null): void {
+    if (!restaurantId) {
+      this.currentRestaurant.set(null);
+      return;
+    }
+
+    this.restaurantService.getRestaurantById(restaurantId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (restaurant) => this.currentRestaurant.set(restaurant),
+        error: () => this.currentRestaurant.set(null)
+      });
   }
 
   private razorpayMethods(paymentMethod: 'COD' | 'UPI' | 'CARD' | 'WALLET'): Record<string, boolean> {
