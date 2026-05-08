@@ -4,7 +4,7 @@
       <span class="brand-mark">QB</span>
       <div>
         <a class="logo" routerLink="/welcome">QuickBite</a>
-        <p>Platform workspace</p>
+        <p>Premium food delivery</p>
       </div>
     </div>
     <div class="nav-actions">
@@ -16,75 +16,38 @@
   <div class="landing-content">
   <section class="hero-panel">
     <div class="hero-copy" data-aos="fade-up">
-      <span class="dashboard-kicker">Online food delivery platform</span>
-      <h1>Delivery, merchant operations, and customer ordering in one premium workflow.</h1>
-      <p>
-        QuickBite brings storefront discovery, restaurant operations, fleet coordination, and platform control
-        into a unified experience designed for speed and clarity.
-      </p>
+      <span class="dashboard-kicker">Order what you are craving</span>
+      <h1>Rich biryani, beautiful platters, and restaurant discovery that feels instantly delicious.</h1>
+      <p>Browse like a real food delivery app, explore premium dishes, and move into ordering when you are ready.</p>
 
       <div class="hero-actions">
         <button class="primary-btn" (click)="goToCustomer()">Start ordering</button>
         <button class="ghost-btn" (click)="navigateToRole('restaurant')">Restaurant onboarding</button>
       </div>
 
-      <div class="hero-metrics">
-        <article class="metric-card">
-          <strong>Live</strong>
-          <span>Customer, merchant, admin, and delivery dashboards</span>
-        </article>
-        <article class="metric-card">
-          <strong>Real-time</strong>
-          <span>Order progress, approvals, and platform activity</span>
-        </article>
-        <article class="metric-card">
-          <strong>API-backed</strong>
-          <span>Integrated directly with the QuickBite backend services</span>
-        </article>
+      <div class="hero-tags">
+        <span class="hero-tag">Biryani favorites</span>
+        <span class="hero-tag">Mixed Indian platters</span>
+        <span class="hero-tag">Fast restaurant browsing</span>
       </div>
     </div>
 
     <aside class="hero-side" data-aos="fade-left">
-      <div class="hero-glass">
-        <span class="dashboard-kicker">Platform modules</span>
-        <div class="role-stack">
-          <button class="role-card" (click)="navigateToRole('customer')">
-            <strong>Customer portal</strong>
-            <p>Restaurant discovery, cart, checkout, orders, and reviews.</p>
-          </button>
-          <button class="role-card" (click)="navigateToRole('restaurant')">
-            <strong>Merchant control center</strong>
-            <p>Restaurant approval, menu management, and order operations.</p>
-          </button>
-          <button class="role-card" (click)="navigateToRole('delivery-partner')">
-            <strong>Delivery partner workspace</strong>
-            <p>Availability, ready-to-pickup queues, deliveries, and earnings.</p>
-          </button>
-          <button class="role-card" (click)="navigateToRole('admin')">
-            <strong>Admin command center</strong>
-            <p>Approvals, payments, reviews, and platform analytics.</p>
-          </button>
+      <div class="hero-media">
+        <div class="hero-image hero-image-main" aria-hidden="true"></div>
+        <div class="hero-image-grid">
+          <div class="hero-image hero-image-platter" aria-hidden="true"></div>
+          <div class="hero-image hero-image-service" aria-hidden="true"></div>
         </div>
       </div>
     </aside>
   </section>
 
-  <section class="feature-grid" data-aos="fade-up">
-    <article class="feature-card">
-      <span class="feature-badge">01</span>
-      <h2>Professional role-based flows</h2>
-      <p>Each workspace is organized around real operational tasks instead of generic placeholder dashboards.</p>
-    </article>
-    <article class="feature-card">
-      <span class="feature-badge">02</span>
-      <h2>Responsive by default</h2>
-      <p>The layout scales from mobile ordering to wide-screen administrative operations without losing density.</p>
-    </article>
-    <article class="feature-card">
-      <span class="feature-badge">03</span>
-      <h2>Stateful UI surfaces</h2>
-      <p>Loading, empty, and action states are consistent so backend-driven flows remain clear under all conditions.</p>
-    </article>
+  <section class="role-strip" data-aos="fade-up">
+    <button class="role-pill" (click)="navigateToRole('customer')">Customer</button>
+    <button class="role-pill" (click)="navigateToRole('restaurant')">Restaurant owner</button>
+    <button class="role-pill" (click)="navigateToRole('delivery-partner')">Delivery partner</button>
+    <button class="role-pill" (click)="navigateToRole('admin')">Admin</button>
   </section>
   </div>
 </section>
