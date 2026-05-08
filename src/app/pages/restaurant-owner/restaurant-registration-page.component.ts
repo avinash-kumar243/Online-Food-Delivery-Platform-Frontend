@@ -51,7 +51,12 @@ import { RestaurantService } from '../../services/restaurant.service';
         <label class="full"><span>Address</span><textarea rows="3" formControlName="address"></textarea></label>
         <label class="full"><span>Description</span><textarea rows="4" formControlName="description"></textarea></label>
       </div>
-      <button type="submit" class="primary-btn" [disabled]="submitting() || form.invalid">{{ submitting() ? 'Submitting...' : existingRestaurant() ? 'Resubmit restaurant' : 'Submit registration' }}</button>
+      <button
+        type="submit"
+        class="primary-btn"
+        [disabled]="submitting() || form.invalid || (existingRestaurant() && !hasMeaningfulChanges())">
+        {{ submitting() ? 'Submitting...' : existingRestaurant() ? 'Resubmit restaurant' : 'Submit registration' }}
+      </button>
     </form>
   `,
   styles: [`
@@ -76,6 +81,7 @@ export class RestaurantRegistrationPageComponent {
 
   readonly submitting = signal(false);
   readonly existingRestaurant = signal<Restaurant | null>(null);
+  readonly hasMeaningfulChanges = signal(false);
   readonly cuisines = RESTAURANT_CUISINES;
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
@@ -90,6 +96,7 @@ export class RestaurantRegistrationPageComponent {
     minOrderAmount: [100, [Validators.required, Validators.min(0)]],
     estimatedDeliveryMin: [30, [Validators.required, Validators.min(1)]]
   });
+  private originalFormValue = '';
 
   constructor() {
     const ownerId = this.authService.getCurrentUser()?.id;
@@ -119,7 +126,14 @@ export class RestaurantRegistrationPageComponent {
             minOrderAmount: restaurant.minOrderAmount,
             estimatedDeliveryMin: restaurant.estimatedDeliveryMin
           });
+          this.captureOriginalFormValue();
         }
+      });
+
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.hasMeaningfulChanges.set(this.serializeFormValue() !== this.originalFormValue);
       });
   }
 
@@ -130,7 +144,7 @@ export class RestaurantRegistrationPageComponent {
 
   submit(): void {
     const ownerId = this.authService.getCurrentUser()?.id;
-    if (!ownerId || this.form.invalid) {
+    if (!ownerId || this.form.invalid || (this.existingRestaurant() && !this.hasMeaningfulChanges())) {
       this.form.markAllAsTouched();
       return;
     }
@@ -141,6 +155,20 @@ export class RestaurantRegistrationPageComponent {
       .subscribe({
         next: (restaurant) => {
           this.existingRestaurant.set(restaurant);
+          this.form.patchValue({
+            name: restaurant.name,
+            description: restaurant.description ?? '',
+            cuisine: restaurant.cuisine,
+            address: restaurant.address,
+            city: restaurant.city,
+            latitude: restaurant.latitude,
+            longitude: restaurant.longitude,
+            phone: restaurant.phone,
+            deliveryRadius: restaurant.deliveryRadius,
+            minOrderAmount: restaurant.minOrderAmount,
+            estimatedDeliveryMin: restaurant.estimatedDeliveryMin
+          });
+          this.captureOriginalFormValue();
           this.notificationService.success('Restaurant registration submitted.');
           this.submitting.set(false);
           this.router.navigate(['/restaurant-owner/dashboard']);
@@ -150,5 +178,28 @@ export class RestaurantRegistrationPageComponent {
           this.submitting.set(false);
         }
       });
+  }
+
+  private captureOriginalFormValue(): void {
+    this.originalFormValue = this.serializeFormValue();
+    this.hasMeaningfulChanges.set(false);
+    this.form.markAsPristine();
+  }
+
+  private serializeFormValue(): string {
+    const rawValue = this.form.getRawValue();
+    return JSON.stringify({
+      name: rawValue.name.trim(),
+      description: rawValue.description.trim(),
+      cuisine: rawValue.cuisine.trim(),
+      address: rawValue.address.trim(),
+      city: rawValue.city.trim(),
+      latitude: Number(rawValue.latitude),
+      longitude: Number(rawValue.longitude),
+      phone: rawValue.phone.trim(),
+      deliveryRadius: Number(rawValue.deliveryRadius),
+      minOrderAmount: Number(rawValue.minOrderAmount),
+      estimatedDeliveryMin: Number(rawValue.estimatedDeliveryMin)
+    });
   }
 }
