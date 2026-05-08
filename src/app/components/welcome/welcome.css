@@ -14,8 +14,7 @@
 }
 
 .landing-nav,
-.hero-glass,
-.feature-card {
+.role-pill {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.72);
   box-shadow: var(--qb-shadow);
@@ -84,7 +83,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr);
   gap: 22px;
-  padding: 36px 0 24px;
+  padding: 28px 0 18px;
 }
 
 .hero-copy {
@@ -100,113 +99,95 @@
 }
 
 .hero-copy p {
-  max-width: 64ch;
+  max-width: 54ch;
   color: var(--qb-text-muted);
-  line-height: 1.8;
+  line-height: 1.7;
   font-size: 1rem;
 }
 
-.hero-metrics,
-.feature-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.hero-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 28px;
 }
 
-.metric-card {
-  padding: 20px;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(255, 255, 255, 0.52);
-}
-
-.metric-card strong {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 1rem;
-}
-
-.metric-card span,
-.role-card p,
-.feature-card p {
-  color: var(--qb-text-muted);
-  line-height: 1.7;
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(15, 122, 95, 0.1);
+  color: var(--qb-primary);
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .hero-side {
   display: flex;
 }
 
-.hero-glass {
+.hero-media {
   width: 100%;
-  padding: 22px;
-  border-radius: 24px;
-}
-
-.role-stack {
   display: grid;
+  gap: 14px;
+}
+
+.hero-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hero-image {
+  border-radius: 26px;
+  min-height: 210px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 26px 48px rgba(15, 23, 42, 0.14);
+}
+
+.hero-image-main {
+  min-height: 390px;
+  background-image:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.28)),
+    url('https://unsplash.com/photos/vsnAIYA9bms/download?force=true&w=1600');
+}
+
+.hero-image-platter {
+  background-image:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.22)),
+    url('https://unsplash.com/photos/4pT9e68P_mU/download?force=true&w=1200');
+}
+
+.hero-image-service {
+  background-image:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.22)),
+    url('https://unsplash.com/photos/DROPNgCSqNI/download?force=true&w=1200');
+}
+
+.role-strip {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
-  margin-top: 12px;
+  padding-top: 10px;
 }
 
-.role-card {
-  width: 100%;
-  padding: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.58);
-  text-align: left;
+.role-pill {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: var(--qb-text);
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.role-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(15, 122, 95, 0.18);
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
-}
-
-.role-card strong {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 1rem;
-}
-
-.feature-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.feature-card {
-  padding: 24px;
-  border-radius: 20px;
-}
-
-.feature-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 16px;
-  border-radius: 12px;
-  background: var(--qb-primary-soft);
-  color: var(--qb-primary);
-  font-weight: 760;
-}
-
-.feature-card h2 {
-  margin-bottom: 10px;
-  font-size: 1.25rem;
+  transition: transform 0.18s ease, border-color 0.18s ease;
 }
 
 @media (max-width: 1040px) {
   .hero-panel,
-  .feature-grid,
-  .hero-metrics {
+  .hero-image-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -237,7 +218,16 @@
   }
 
   .nav-actions,
-  .hero-actions {
+  .hero-actions,
+  .role-strip {
     flex-direction: column;
+  }
+
+  .hero-image-main {
+    min-height: 260px;
+  }
+
+  .hero-image {
+    min-height: 180px;
   }
 }
