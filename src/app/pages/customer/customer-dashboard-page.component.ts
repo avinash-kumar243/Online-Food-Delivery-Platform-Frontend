@@ -1,254 +1,454 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { LoaderComponent } from '../../components/shared/loader.component';
+import { RouterLink } from '@angular/router';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
-import { AuthService } from '../../services/auth.service';
-import { RestaurantService } from '../../services/restaurant.service';
-import { RealtimeService } from '../../services/realtime.service';
-import { StatsService } from '../../services/stats.service';
+import { LoaderComponent } from '../../components/shared/loader.component';
+import { Restaurant } from '../../models/app.models';
+import { getCustomerRestaurantImage } from '../../shared/restaurant-visuals';
 import { getErrorMessage } from '../../services/api.utils';
-import { CustomerStats, Restaurant } from '../../models/app.models';
+import { RestaurantService } from '../../services/restaurant.service';
 
 @Component({
   selector: 'app-customer-dashboard-page',
   standalone: true,
   imports: [CommonModule, RouterLink, LoaderComponent, EmptyStateComponent],
   template: `
-    <section class="section-header">
-      <div>
-        <span class="dashboard-kicker">Customer overview</span>
-        <h1>Discover, order, and track from one place.</h1>
-        <p class="dashboard-subtitle">Your restaurant recommendations, order history, and spending summary update from live backend data.</p>
-      </div>
-      <a routerLink="/customer/restaurants" class="primary-btn">Browse restaurants</a>
+    <section class="hero-shell">
+      <article class="hero-banner surface-card">
+        <div class="hero-visuals" aria-hidden="true">
+          <div class="hero-plate hero-main-plate"></div>
+          <div class="hero-side-stack">
+            <div class="hero-plate hero-biryani-plate"></div>
+            <div class="hero-plate hero-snack-plate"></div>
+          </div>
+        </div>
+        <div class="hero-action-panel">
+          <div class="hero-action-copy">
+            <span class="dashboard-kicker">Food picks</span>
+            <p class="hero-tagline">Fresh meals, fast delivery, happy cravings.</p>
+            <div class="hero-chip-row">
+              <span class="hero-chip">Biryani</span>
+              <span class="hero-chip">Platters</span>
+              <span class="hero-chip">Combos</span>
+            </div>
+            <p class="hero-support-copy">Your favourite food is just one click away.</p>
+          </div>
+          <div class="hero-actions">
+            <a routerLink="/customer/restaurants" class="primary-btn">Browse Restaurant</a>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="showcase-strip dashboard-section">
+      <article class="showcase-card showcase-biryani">
+        <div class="showcase-content">
+          <small>Signature pick</small>
+          <span>Biryani nights</span>
+        </div>
+      </article>
+      <article class="showcase-card showcase-thali">
+        <div class="showcase-content">
+          <small>Balanced plates</small>
+          <span>Indian platters</span>
+        </div>
+      </article>
+      <article class="showcase-card showcase-feast">
+        <div class="showcase-content">
+          <small>Anytime craving</small>
+          <span>Comfort food picks</span>
+        </div>
+      </article>
     </section>
 
     <app-loader *ngIf="loading()"></app-loader>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
 
     <ng-container *ngIf="!loading() && !error()">
-      <section class="stats-grid dashboard-section" *ngIf="stats() as stats">
-        <article class="surface-card stat-card">
-          <div class="stat-card-top"><span class="icon-badge red">O</span><span class="label">Total orders</span></div>
-          <div class="value">{{ stats.totalOrders || 0 }}</div>
-          <p class="helper">Orders placed across your account.</p>
-        </article>
-        <article class="surface-card stat-card">
-          <div class="stat-card-top"><span class="icon-badge green">R</span><span class="label">Amount spent</span></div>
-          <div class="value">Rs {{ (stats.totalAmountSpent || 0).toFixed(2) }}</div>
-          <p class="helper">Paid order value recorded by payment service.</p>
-        </article>
-        <article class="surface-card stat-card">
-          <div class="stat-card-top"><span class="icon-badge orange">C</span><span class="label">Cancelled</span></div>
-          <div class="value">{{ stats.cancelledOrders || 0 }}</div>
-          <p class="helper">Orders that did not complete.</p>
-        </article>
-        <article class="surface-card stat-card">
-          <div class="stat-card-top"><span class="icon-badge slate">F</span><span class="label">Favorites</span></div>
-          <div class="value">{{ stats.favoriteRestaurants.length }}</div>
-          <p class="helper">Frequently ordered restaurants.</p>
-        </article>
-      </section>
-
-      <section class="surface-card page-hero dashboard-section" *ngIf="stats() as stats">
-        <div>
-          <span class="dashboard-kicker">Recommendations</span>
-          <h2>{{ stats.favoriteRestaurants.length ? 'Your next order is already close.' : 'Start building your regular rotation.' }}</h2>
-          <p class="dashboard-subtitle">
-            {{ stats.favoriteRestaurants.length
-              ? 'We prioritize restaurants you already trust so reordering stays fast.'
-              : 'Browse approved restaurants and your repeat ordering patterns will start shaping this feed.' }}
-          </p>
-        </div>
-        <div class="hero-aside">
-          <div class="hero-metric">
-            <span>Recent order velocity</span>
-            <strong>{{ stats.recentOrders.length }}</strong>
-          </div>
-          <div class="hero-metric">
-            <span>Favorite restaurants</span>
-            <strong>{{ stats.favoriteRestaurants.length }}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section class="split-layout dashboard-section">
-        <article class="surface-card section-card">
-          <div class="section-header compact">
-            <div>
-              <h2>Favorite restaurants</h2>
-              <p class="section-helper">Picked from your actual order history.</p>
-            </div>
-          </div>
-
-          <div class="stack-list" *ngIf="stats()?.favoriteRestaurants?.length; else noFavorites">
-            <a *ngFor="let restaurant of stats()?.favoriteRestaurants" class="list-card" [routerLink]="['/customer/restaurants', restaurant.restaurantId]">
-              <div>
-                <strong>{{ restaurant.name }}</strong>
-                <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
-              </div>
-              <span class="badge-chip">Rating {{ restaurant.avgRating || 0 }}</span>
-            </a>
-          </div>
-
-          <ng-template #noFavorites>
-            <app-empty-state title="No favorites yet" description="Your repeat orders will surface here once you start ordering."></app-empty-state>
-          </ng-template>
-        </article>
-
-        <article class="surface-card section-card">
-          <div class="section-header compact">
-            <div>
-              <h2>Recent orders</h2>
-              <p class="section-helper">Live order feed from the order service.</p>
-            </div>
-            <a routerLink="/customer/orders" class="ghost-btn">View all</a>
-          </div>
-
-          <div class="stack-list" *ngIf="stats()?.recentOrders?.length; else noOrders">
-            <a *ngFor="let order of stats()?.recentOrders" class="list-card" [routerLink]="['/customer/orders', order.orderId]">
-              <div>
-                <strong>Order #{{ order.orderId }}</strong>
-                <p>{{ order.items.length }} items | {{ order.orderStatus }}</p>
-              </div>
-              <span class="badge-chip">Rs {{ order.finalAmount.toFixed(2) }}</span>
-            </a>
-          </div>
-
-          <ng-template #noOrders>
-            <app-empty-state title="No recent orders" description="Place your first order and live tracking will appear here."></app-empty-state>
-          </ng-template>
-        </article>
-      </section>
-
-      <section class="dashboard-section">
+      <section class="dashboard-section featured-section">
         <div class="section-header">
           <div>
-            <h2>Trending nearby</h2>
-            <p class="section-helper">Approved restaurants currently available for ordering.</p>
+            <span class="dashboard-kicker">Featured restaurants</span>
+            <h2>Find your next favourite meal.</h2>
           </div>
-          <a routerLink="/customer/restaurants" class="secondary-btn">See full list</a>
+          <a routerLink="/customer/restaurants" class="secondary-btn">View All Restaurant</a>
         </div>
 
-        <div class="cards-grid" *ngIf="restaurants().length; else noRestaurants">
-          <a *ngFor="let restaurant of restaurants()" class="surface-card tile-card" [routerLink]="['/customer/restaurants', restaurant.restaurantId]">
-            <div class="tile-hero">{{ restaurant.name.slice(0, 1) }}</div>
-            <strong>{{ restaurant.name }}</strong>
-            <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
-            <div class="meta-row"><span>Status</span><strong>{{ restaurant.isOpen ? 'Open' : 'Closed' }}</strong></div>
+        <div class="cards-grid" *ngIf="featuredRestaurants().length; else noRestaurants">
+          <a *ngFor="let restaurant of featuredRestaurants()" class="surface-card restaurant-card" [routerLink]="['/customer/restaurants', restaurant.restaurantId]">
+            <ng-container *ngIf="getRestaurantImage(restaurant) as restaurantImage; else restaurantFallback">
+              <div class="restaurant-cover image-cover">
+                <img [src]="restaurantImage" [alt]="restaurant.name" loading="lazy" />
+<!--                <span class="status-chip" [class.status-green]="restaurant.isOpen" [class.status-slate]="!restaurant.isOpen">-->
+<!--                  {{ restaurant.isOpen ? 'Open now' : 'Closed' }}-->
+<!--                </span>-->
+              </div>
+            </ng-container>
+            <ng-template #restaurantFallback>
+              <div class="restaurant-cover">
+                <div class="restaurant-cover-glow"></div>
+                <span class="restaurant-initial">{{ restaurant.name.slice(0, 1) }}</span>
+<!--                <span class="status-chip" [class.status-green]="restaurant.isOpen" [class.status-slate]="!restaurant.isOpen">-->
+<!--                  {{ restaurant.isOpen ? 'Open now' : 'Closed' }}-->
+<!--                </span>-->
+              </div>
+            </ng-template>
+            <div class="restaurant-body">
+              <div class="restaurant-title-row">
+                <strong>{{ restaurant.name }}</strong>
+                <span class="cta-chip">View menu</span>
+              </div>
+              <p>{{ restaurant.cuisine }} | {{ restaurant.city }}</p>
+              <div class="meta-row"><span>Minimum order</span><strong>Rs {{ restaurant.minOrderAmount }}</strong></div>
+              <div class="meta-row"><span>ETA</span><strong>{{ restaurant.estimatedDeliveryMin }} mins</strong></div>
+            </div>
           </a>
         </div>
-
-        <ng-template #noRestaurants>
-          <app-empty-state title="No approved restaurants found" description="Once restaurants are approved and available, they will appear here."></app-empty-state>
-        </ng-template>
       </section>
     </ng-container>
+
+    <ng-template #noRestaurants>
+      <app-empty-state title="No featured restaurants yet" description="Approved restaurants will appear here as soon as they are available."></app-empty-state>
+    </ng-template>
   `,
   styles: [`
-    .section-card,
-    .page-hero {
+    .hero-shell {
+      margin-top: 8px;
+    }
+    .hero-banner {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.72fr);
+      gap: 24px;
       padding: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(245, 158, 11, 0.2), transparent 22rem),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(243, 250, 247, 0.94));
     }
-    .compact {
-      margin-bottom: 18px;
-    }
-    .list-card,
-    .tile-card {
-      display: block;
-      padding: 18px;
-    }
-    .list-card p,
-    .tile-card p {
-      color: var(--qb-text-muted);
-      margin-top: 6px;
-    }
-    .tile-hero {
-      width: 58px;
-      height: 58px;
-      border-radius: 18px;
+    .hero-visuals {
       display: grid;
-      place-items: center;
-      margin-bottom: 14px;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--qb-primary);
-      background: linear-gradient(135deg, rgba(15, 122, 95, 0.12), rgba(15, 122, 95, 0.04));
+      grid-template-columns: minmax(0, 1.1fr) minmax(180px, 0.7fr);
+      gap: 14px;
+      min-height: 420px;
     }
-    .page-hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.7fr);
-      gap: 20px;
-    }
-    .page-hero h2 {
-      margin-bottom: 10px;
-      font-size: clamp(1.7rem, 2.2vw, 2.35rem);
-      line-height: 1.06;
-    }
-    .hero-aside {
+    .hero-side-stack {
       display: grid;
       gap: 14px;
     }
-    .hero-metric {
-      padding: 18px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.16);
+    .hero-plate,
+    .showcase-card {
+      border-radius: 24px;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      overflow: hidden;
+      box-shadow: 0 28px 48px rgba(15, 23, 42, 0.16);
     }
-    .hero-metric span {
-      display: block;
-      margin-bottom: 6px;
+    .hero-main-plate {
+      min-height: 420px;
+      background-image:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.18)),
+        url('https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=1600&q=80');
+    }
+    .hero-biryani-plate {
+      min-height: 202px;
+      background-image:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.22)),
+        url('https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=1200&q=80');
+    }
+    .hero-snack-plate {
+      min-height: 202px;
+      background-image:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.22)),
+        url('https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&w=1200&q=80');
+    }
+    .hero-action-panel {
+      display: grid;
+      grid-template-rows: auto auto auto;
+      align-content: center;
+      gap: 28px;
+      min-height: 100%;
+      padding: 30px 32px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      box-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
+    }
+    .hero-action-copy {
+      display: grid;
+      gap: 18px;
+      align-content: center;
+    }
+    .hero-tagline {
+      color: #10213e;
+      font-size: clamp(1rem, 2vw, 1.12rem);
+      font-weight: 600;
+      line-height: 1.5;
+    }
+    .hero-support-copy {
       color: var(--qb-text-muted);
-      font-size: 0.86rem;
+      font-size: 0.96rem;
+      line-height: 1.6;
+      max-width: 28ch;
+    }
+    .hero-chip-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(15, 122, 95, 0.12), rgba(245, 158, 11, 0.14));
+      color: #10213e;
       font-weight: 700;
     }
-    .hero-metric strong {
-      font-size: 1.6rem;
-      line-height: 1.1;
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 12px;
+    }
+    .hero-actions .primary-btn {
+      min-width: 270px;
+      justify-content: center;
+    }
+    .featured-section {
+      margin-top: 40px;
+    }
+    .section-header {
+      align-items: flex-end;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+    .section-header > div {
+      padding-top: 20px;
+    }
+    .section-header h2 {
+      white-space: nowrap;
+    }
+    .showcase-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .showcase-card {
+      min-height: 220px;
+      display: flex;
+      align-items: flex-end;
+      padding: 18px;
+      color: #fff;
+    }
+    .showcase-content small,
+    .showcase-content span {
+      display: block;
+    }
+    .showcase-content small {
+      margin-bottom: 6px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 0.75rem;
+    }
+    .showcase-content span {
+      font-size: 1.16rem;
+      font-weight: 700;
+    }
+    .showcase-biryani {
+      background-image:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.38)),
+        url('https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=1400&q=80');
+    }
+    .showcase-thali {
+      background-image:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.38)),
+        url('https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=1400&q=80');
+    }
+    .showcase-feast {
+      background-image:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.38)),
+        url('https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&w=1400&q=80');
     }
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 18px;
+      margin-top: 16px;
     }
-    @media (max-width: 960px) {
-      .cards-grid,
-      .page-hero {
+    .section-header .secondary-btn {
+      margin-top: 18px;
+      align-self: end;
+    }
+    .restaurant-card {
+      display: block;
+      overflow: hidden;
+      padding: 14px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.98));
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .restaurant-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+    }
+    .restaurant-card p {
+      margin-top: 8px;
+      color: var(--qb-text-muted);
+      line-height: 1.6;
+    }
+    .restaurant-cover {
+      position: relative;
+      min-height: 220px;
+      margin-bottom: 0;
+      border-radius: 22px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.44), transparent 16rem),
+        linear-gradient(135deg, rgba(15, 122, 95, 0.95), rgba(245, 158, 11, 0.88));
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 18px;
+    }
+    .restaurant-cover.image-cover {
+      padding: 14px;
+      align-items: flex-start;
+      background: #0f172a;
+    }
+    .restaurant-cover.image-cover img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .restaurant-cover.image-cover::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.42));
+    }
+    .restaurant-cover.image-cover .status-chip {
+      position: relative;
+      z-index: 1;
+      margin-left: auto;
+    }
+    .restaurant-body {
+      padding: 16px 6px 6px;
+    }
+    .restaurant-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .restaurant-title-row strong {
+      font-size: 1.2rem;
+      line-height: 1.2;
+    }
+    .cta-chip {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 122, 95, 0.1);
+      color: var(--qb-primary);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+    .restaurant-cover-glow {
+      position: absolute;
+      inset: auto -22px -30px auto;
+      width: 132px;
+      height: 132px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .restaurant-initial {
+      position: relative;
+      z-index: 1;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 1.5rem;
+      font-weight: 800;
+      backdrop-filter: blur(10px);
+    }
+    @media (max-width: 1100px) {
+      .hero-banner,
+      .hero-visuals,
+      .showcase-strip,
+      .cards-grid {
         grid-template-columns: 1fr;
+      }
+      .hero-chip-row {
+        grid-template-columns: 1fr;
+      }
+      .hero-action-panel {
+        gap: 20px;
+        padding: 22px;
+      }
+      .section-header h2 {
+        white-space: normal;
+      }
+    }
+    @media (min-width: 721px) and (max-width: 1100px) {
+      .cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 760px) {
+      .hero-main-plate,
+      .hero-biryani-plate,
+      .hero-snack-plate {
+        min-height: 220px;
+      }
+      .hero-action-panel {
+        justify-items: stretch;
+      }
+      .hero-actions .primary-btn {
+        min-width: 100%;
+      }
+      .section-header {
+        align-items: stretch;
+      }
+      .section-header > div {
+        padding-top: 0;
+      }
+      .section-header .secondary-btn {
+        margin-top: 0;
+      }
+      .restaurant-title-row {
+        align-items: flex-start;
+        flex-direction: column;
       }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomerDashboardPageComponent {
-  private readonly statsService = inject(StatsService);
   private readonly restaurantService = inject(RestaurantService);
-  private readonly authService = inject(AuthService);
-  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   readonly error = signal('');
-  readonly stats = signal<CustomerStats | null>(null);
-  readonly restaurants = signal<Restaurant[]>([]);
+  readonly featuredRestaurants = signal<Restaurant[]>([]);
 
   constructor() {
-    const customerId = this.authService.getCurrentUser()?.id;
-    if (!customerId) {
-      this.loading.set(false);
-      this.error.set('Unable to resolve your customer session.');
-      return;
-    }
-
-    this.loadStats(customerId);
-
     this.restaurantService.getApprovedRestaurants()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (restaurants) => {
-          this.restaurants.set(restaurants.slice(0, 3));
+          this.featuredRestaurants.set(restaurants.slice(0, 6));
           this.loading.set(false);
         },
         error: (error) => {
@@ -256,18 +456,9 @@ export class CustomerDashboardPageComponent {
           this.loading.set(false);
         }
       });
-
-    this.realtimeService.orderEvents$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadStats(customerId));
   }
 
-  private loadStats(customerId: number): void {
-    this.statsService.getCustomerStats(customerId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (stats) => this.stats.set(stats),
-        error: (error) => this.error.set(getErrorMessage(error))
-      });
+  getRestaurantImage(restaurant: Restaurant): string | null {
+    return getCustomerRestaurantImage(restaurant);
   }
 }
