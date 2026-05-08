@@ -57,6 +57,7 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
+      this.isLoginMode = params['mode'] !== 'signup';
       const token = params['token'];
       const oauth2 = params['oauth2'];
       const userType = params['userType'];
