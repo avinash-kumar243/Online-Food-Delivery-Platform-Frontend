@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { map, of, switchMap } from 'rxjs';
@@ -26,6 +26,7 @@ import { getErrorMessage } from '../../services/api.utils';
     </section>
 
     <form class="surface-card form-card" [formGroup]="form" (ngSubmit)="submit()" *ngIf="restaurant()">
+      <p class="form-hint" *ngIf="minimumAllowedPrice() > 0">Menu item price and discounted price must be at least Rs {{ minimumAllowedPrice() }}, based on this restaurant's minimum order amount.</p>
       <div class="form-grid">
         <label><span>Name</span><input formControlName="name" /></label>
         <label>
@@ -35,8 +36,8 @@ import { getErrorMessage } from '../../services/api.utils';
             <option *ngFor="let category of availableCategoryOptions()" [value]="category">{{ formatCategoryName(category) }}</option>
           </select>
         </label>
-        <label><span>Price</span><input type="number" formControlName="price" /></label>
-        <label><span>Discounted price</span><input type="number" formControlName="discountedPrice" /></label>
+        <label><span>Price</span><input type="number" formControlName="price" [attr.min]="minimumAllowedPrice()" /></label>
+        <label><span>Discounted price</span><input type="number" formControlName="discountedPrice" [attr.min]="minimumAllowedPrice()" /></label>
         <label><span>Image URL</span><input formControlName="imageUrl" /></label>
         <label><span>Calories</span><input type="number" formControlName="calories" /></label>
         <label><span>Tags</span><input formControlName="tags" /></label>
@@ -49,6 +50,7 @@ import { getErrorMessage } from '../../services/api.utils';
   `,
   styles: [`
     h1{font-size:clamp(2rem,3vw,3rem)} .form-card{padding:24px}
+    .form-hint{margin:0 0 18px;color:var(--qb-text-muted);line-height:1.5}
     .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
     label span{display:block;font-weight:600;margin-bottom:8px}
     input,textarea,select{width:100%;border:1px solid var(--qb-border);border-radius:14px;padding:12px 14px}
@@ -71,6 +73,7 @@ export class MenuItemFormPageComponent {
   readonly restaurant = signal<Restaurant | null>(null);
   readonly categories = signal<MenuCategory[]>([]);
   readonly availableCategoryOptions = signal<string[]>([]);
+  readonly minimumAllowedPrice = signal(1);
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
     categoryName: ['', Validators.required],
@@ -82,7 +85,7 @@ export class MenuItemFormPageComponent {
     isAvailable: [true, Validators.required],
     calories: [0],
     tags: ['']
-  });
+  }, { validators: this.minimumPricingValidator() });
 
   constructor() {
     const ownerId = this.authService.getCurrentUser()?.id;
@@ -95,6 +98,12 @@ export class MenuItemFormPageComponent {
           if (!restaurant) {
             return;
           }
+
+          this.minimumAllowedPrice.set(Math.max(1, restaurant.minOrderAmount || 1));
+          this.form.controls.price.addValidators(Validators.min(this.minimumAllowedPrice()));
+          this.form.controls.price.updateValueAndValidity();
+          this.form.controls.discountedPrice.updateValueAndValidity();
+          this.form.updateValueAndValidity();
 
           this.loadCategories(restaurant.restaurantId);
         }
@@ -168,6 +177,14 @@ export class MenuItemFormPageComponent {
       this.notificationService.error('Choose a category for this item.');
       return;
     }
+    if (this.form.hasError('minimumPrice')) {
+      this.notificationService.error(`Price and discounted price must be at least Rs ${this.minimumAllowedPrice()}.`);
+      return;
+    }
+    if (this.form.hasError('discountAbovePrice')) {
+      this.notificationService.error('Discounted price must be less than price.');
+      return;
+    }
 
     this.submitting.set(true);
     const existingCategoryId = this.categories()
@@ -194,7 +211,7 @@ export class MenuItemFormPageComponent {
             name: this.form.controls.name.value,
             description: this.form.controls.description.value,
             price: this.form.controls.price.value,
-            discountedPrice: this.form.controls.discountedPrice.value,
+            discountedPrice: this.form.controls.discountedPrice.value > 0 ? this.form.controls.discountedPrice.value : null,
             imageUrl: this.form.controls.imageUrl.value,
             isVeg: this.form.controls.isVeg.value,
             isAvailable: this.form.controls.isAvailable.value,
@@ -228,5 +245,27 @@ export class MenuItemFormPageComponent {
     const options = new Set<string>(getCuisineCategories(cuisine));
     categories.forEach((category) => options.add(category.name));
     return Array.from(options);
+  }
+
+  private minimumPricingValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const price = Number(control.get('price')?.value ?? 0);
+      const discountedPrice = Number(control.get('discountedPrice')?.value ?? 0);
+      const minimum = this.minimumAllowedPrice();
+
+      if (price > 0 && price < minimum) {
+        return { minimumPrice: true };
+      }
+
+      if (discountedPrice > 0 && discountedPrice < minimum) {
+        return { minimumPrice: true };
+      }
+
+      if (discountedPrice > 0 && price > 0 && discountedPrice >= price) {
+        return { discountAbovePrice: true };
+      }
+
+      return null;
+    };
   }
 }
