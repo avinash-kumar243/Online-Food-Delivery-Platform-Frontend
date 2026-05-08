@@ -146,13 +146,17 @@ export class AuthService {
       return;
     }
 
+    const hasEmail = Object.prototype.hasOwnProperty.call(profile, 'email');
+    const hasFullName = Object.prototype.hasOwnProperty.call(profile, 'fullName');
+    const hasProfilePic = Object.prototype.hasOwnProperty.call(profile, 'profilePicUrl');
+
     this.persistSession(
       currentUser.token,
       currentUser.role,
-      profile.email ?? currentUser.email ?? undefined,
+      hasEmail ? profile.email ?? undefined : currentUser.email ?? undefined,
       currentUser.id ?? undefined,
-      profile.fullName ?? currentUser.fullName ?? undefined,
-      profile.profilePicUrl ?? currentUser.profilePicUrl ?? undefined
+      hasFullName ? profile.fullName ?? undefined : currentUser.fullName ?? undefined,
+      hasProfilePic ? profile.profilePicUrl ?? null : currentUser.profilePicUrl ?? undefined
     );
   }
 
@@ -181,10 +185,14 @@ export class AuthService {
 
     if (typeof fullName === 'string' && fullName.trim()) {
       this.storage.setItem(AuthService.FULL_NAME_KEY, fullName.trim());
+    } else if (fullName === null || fullName === '') {
+      this.storage.removeItem(AuthService.FULL_NAME_KEY);
     }
 
     if (typeof profilePicUrl === 'string' && profilePicUrl.trim()) {
       this.storage.setItem(AuthService.PROFILE_PIC_KEY, profilePicUrl.trim());
+    } else if (profilePicUrl === null || profilePicUrl === '') {
+      this.storage.removeItem(AuthService.PROFILE_PIC_KEY);
     }
 
     this.currentUserSubject.next(this.resolveCurrentUser());
