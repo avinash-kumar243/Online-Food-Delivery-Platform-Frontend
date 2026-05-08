@@ -31,6 +31,13 @@ import { getErrorMessage } from '../../services/api.utils';
           <p class="dashboard-subtitle">{{ restaurant.description || 'Fresh meals, fast delivery, and live availability.' }}</p>
         </div>
         <div class="meta-list">
+          <section *ngIf="!restaurant.isOpen" class="status-banner" aria-label="Restaurant closed notice">
+            <div class="status-banner-dot"></div>
+            <div>
+              <strong>Restaurant closed</strong>
+              <p>Menu browsing is available, but ordering will resume once the restaurant reopens.</p>
+            </div>
+          </section>
           <div class="meta-row"><span>Address</span><strong>{{ restaurant.address }}</strong></div>
           <div class="meta-row"><span>Status</span><strong>{{ restaurant.isOpen ? 'Open' : 'Closed' }}</strong></div>
           <div class="meta-row"><span>Rating</span><strong>{{ restaurant.avgRating || 0 }}</strong></div>
@@ -67,9 +74,20 @@ import { getErrorMessage } from '../../services/api.utils';
               <span class="badge-chip">{{ item.isVeg ? 'Veg' : 'Non-veg' }}</span>
             </div>
             <p class="description">{{ item.description || 'Prepared fresh for every order.' }}</p>
-            <div class="meta-row"><span>Price</span><strong>Rs {{ item.price }}</strong></div>
+            <div class="meta-row price-row">
+              <span>Price</span>
+              <strong class="price-stack">
+                <span class="current-price">Rs {{ getDisplayPrice(item) }}</span>
+                <span *ngIf="hasDiscount(item)" class="original-price">Rs {{ item.price }}</span>
+              </strong>
+            </div>
             <div class="meta-row"><span>Availability</span><strong>{{ item.isAvailable ? 'Available' : 'Unavailable' }}</strong></div>
-            <button type="button" class="primary-btn" [disabled]="!item.isAvailable || addingItemId() === item.itemId" (click)="addToCart(item)">
+            <button
+              type="button"
+              class="primary-btn"
+              [class.closed-btn]="!restaurant.isOpen"
+              [disabled]="!restaurant.isOpen || !item.isAvailable || addingItemId() === item.itemId"
+              (click)="addToCart(item)">
               {{ addingItemId() === item.itemId ? 'Adding...' : 'Add to cart' }}
             </button>
           </article>
@@ -94,6 +112,11 @@ import { getErrorMessage } from '../../services/api.utils';
     .filters-card,
     .menu-card {
       padding: 22px;
+    }
+    .meta-list {
+      display: grid;
+      gap: 14px;
+      align-content: start;
     }
     .cards-grid {
       display: grid;
@@ -126,6 +149,60 @@ import { getErrorMessage } from '../../services/api.utils';
     }
     .menu-card p {
       color: var(--qb-text-muted);
+    }
+    .price-row {
+      align-items: flex-start;
+    }
+    .price-stack {
+      display: grid;
+      justify-items: end;
+      gap: 2px;
+    }
+    .current-price {
+      color: var(--qb-text);
+      font-size: 1.05rem;
+    }
+    .original-price {
+      color: var(--qb-text-muted);
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      opacity: 0.9;
+    }
+    .status-banner {
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 16px 18px;
+      border: 1px solid rgba(180, 83, 9, 0.18);
+      border-radius: 18px;
+      color: #9a3412;
+      background: linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(255, 237, 213, 0.9));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    .status-banner-dot {
+      width: 12px;
+      height: 12px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: #f97316;
+      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.14);
+    }
+    .status-banner strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 1rem;
+      color: #9a3412;
+    }
+    .status-banner p {
+      margin: 0;
+      color: #b45309;
+      line-height: 1.5;
+    }
+    .closed-btn {
+      opacity: 0.72;
     }
     .description {
       margin: 14px 0;
@@ -192,7 +269,12 @@ export class RestaurantDetailPageComponent {
   addToCart(item: MenuItem): void {
     const customerId = this.authService.getCurrentUser()?.id;
     const restaurantId = this.restaurant()?.restaurantId;
+    const isOpen = this.restaurant()?.isOpen;
     if (!customerId || !restaurantId) {
+      return;
+    }
+    if (!isOpen) {
+      this.notificationService.error('This restaurant is currently closed. Ordering is disabled until it reopens.');
       return;
     }
 
@@ -202,7 +284,7 @@ export class RestaurantDetailPageComponent {
       restaurantId,
       menuItemId: item.itemId,
       name: item.name,
-      price: item.price,
+      price: this.getDisplayPrice(item),
       quantity: 1
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -228,5 +310,13 @@ export class RestaurantDetailPageComponent {
 
   markImageBroken(itemId: number): void {
     this.brokenImages.update((state) => ({ ...state, [itemId]: true }));
+  }
+
+  hasDiscount(item: MenuItem): boolean {
+    return item.discountedPrice != null && item.discountedPrice > 0 && item.discountedPrice < item.price;
+  }
+
+  getDisplayPrice(item: MenuItem): number {
+    return this.hasDiscount(item) ? item.discountedPrice! : item.price;
   }
 }
