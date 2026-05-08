@@ -45,7 +45,11 @@ import { ProfileService } from '../../services/profile.service';
 
         <div class="form-grid">
           <label><span>Full name</span><input formControlName="fullName" /></label>
-          <label><span>Phone number</span><input formControlName="phone" /></label>
+          <label>
+            <span>Phone number</span>
+            <input formControlName="phone" inputmode="numeric" maxlength="10" />
+            <small class="field-error" *ngIf="phoneHasInvalidValue()">Phone number must contain exactly 10 digits.</small>
+          </label>
           <label class="full"><span>Profile image URL</span><input formControlName="profilePicUrl" placeholder="https://example.com/profile.jpg" /></label>
         </div>
 
@@ -120,6 +124,12 @@ import { ProfileService } from '../../services/profile.service';
       margin-bottom: 8px;
       font-weight: 600;
     }
+    .field-error {
+      display: block;
+      margin-top: 8px;
+      color: #d92d20;
+      font-size: 0.9rem;
+    }
     .form-actions {
       margin-top: 20px;
       display: flex;
@@ -186,6 +196,11 @@ export class OwnerProfilePageComponent {
 
   initials(): string {
     return this.form.controls.fullName.value.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'RO';
+  }
+
+  phoneHasInvalidValue(): boolean {
+    const control = this.form.controls.phone;
+    return control.invalid && (control.dirty || control.touched);
   }
 
   save(): void {
