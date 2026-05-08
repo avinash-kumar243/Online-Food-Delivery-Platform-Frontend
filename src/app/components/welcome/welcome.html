@@ -4,50 +4,150 @@
       <span class="brand-mark">QB</span>
       <div>
         <a class="logo" routerLink="/welcome">QuickBite</a>
-        <p>Premium food delivery</p>
+        <p>Modern food delivery platform</p>
       </div>
     </div>
-    <div class="nav-actions">
-      <button class="secondary-btn" (click)="navigateToRole('admin')">Admin access</button>
-      <button class="primary-btn" (click)="goToCustomer()">Open customer app</button>
-    </div>
+
+    <button class="primary-btn nav-cta" (click)="goToCustomer()">Open Customer App</button>
   </header>
 
-  <div class="landing-content">
-  <section class="hero-panel">
-    <div class="hero-copy" data-aos="fade-up">
-      <span class="dashboard-kicker">Order what you are craving</span>
-      <h1>Rich biryani, beautiful platters, and restaurant discovery that feels instantly delicious.</h1>
-      <p>Browse like a real food delivery app, explore premium dishes, and move into ordering when you are ready.</p>
+  <main class="landing-content">
+    <section class="hero-panel">
+      <div class="hero-copy" data-aos="fade-up">
+        <span class="dashboard-kicker">Welcome to QuickBite</span>
+        <h1>Fresh food from your favorite restaurants, delivered fast.</h1>
+        <p class="hero-description">
+          Order meals, manage restaurant operations, coordinate deliveries, and oversee the platform from one beautifully connected experience.
+        </p>
 
-      <div class="hero-actions">
-        <button class="primary-btn" (click)="goToCustomer()">Start ordering</button>
-        <button class="ghost-btn" (click)="navigateToRole('restaurant')">Restaurant onboarding</button>
-      </div>
-
-      <div class="hero-tags">
-        <span class="hero-tag">Biryani favorites</span>
-        <span class="hero-tag">Mixed Indian platters</span>
-        <span class="hero-tag">Fast restaurant browsing</span>
-      </div>
-    </div>
-
-    <aside class="hero-side" data-aos="fade-left">
-      <div class="hero-media">
-        <div class="hero-image hero-image-main" aria-hidden="true"></div>
-        <div class="hero-image-grid">
-          <div class="hero-image hero-image-platter" aria-hidden="true"></div>
-          <div class="hero-image hero-image-service" aria-hidden="true"></div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <strong>4 roles</strong>
+            <span>One unified delivery system</span>
+          </div>
+          <div class="hero-stat">
+            <strong>Fast ordering</strong>
+            <span>Built for smooth restaurant discovery</span>
+          </div>
         </div>
       </div>
-    </aside>
-  </section>
 
-  <section class="role-strip" data-aos="fade-up">
-    <button class="role-pill" (click)="navigateToRole('customer')">Customer</button>
-    <button class="role-pill" (click)="navigateToRole('restaurant')">Restaurant owner</button>
-    <button class="role-pill" (click)="navigateToRole('delivery-partner')">Delivery partner</button>
-    <button class="role-pill" (click)="navigateToRole('admin')">Admin</button>
-  </section>
-  </div>
+      <aside class="hero-visuals" data-aos="fade-left">
+        <article class="hero-card hero-card-main">
+          <div class="hero-card-copy">
+            <span>Chef-crafted favorites</span>
+            <strong>Biryani, burgers, platters, desserts, and more</strong>
+          </div>
+        </article>
+        <div class="hero-card-grid">
+          <article class="hero-card hero-card-pizza"></article>
+          <article class="hero-card hero-card-dessert"></article>
+          <article class="hero-card hero-card-drinks"></article>
+        </div>
+      </aside>
+    </section>
+
+    <section class="gallery-section" data-aos="fade-up">
+      <div class="gallery-copy">
+        <span class="dashboard-kicker">Food stories</span>
+        <h2>Premium visuals that feel ready to order.</h2>
+        <p>From rich Indian platters to pizza nights and dessert cravings, the landing experience now feels unmistakably food-first.</p>
+      </div>
+
+      <div class="gallery-grid">
+        <article class="gallery-card gallery-card-platter">
+          <div>
+            <span>Indian platters</span>
+            <strong>Rich flavors and warm presentation</strong>
+          </div>
+        </article>
+        <article class="gallery-card gallery-card-burger">
+          <div>
+            <span>Comfort meals</span>
+            <strong>Burgers, fries, and combo cravings</strong>
+          </div>
+        </article>
+        <article class="gallery-card gallery-card-sweets">
+          <div>
+            <span>Sweet finishes</span>
+            <strong>Desserts and chilled beverages</strong>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="feature-section" data-aos="fade-up">
+      <div class="section-heading">
+        <span class="dashboard-kicker">Why QuickBite</span>
+        <h2>Four simple strengths, built for real delivery flow.</h2>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card surface-card">
+          <h3>Fast Food Delivery</h3>
+          <p>Browse quickly, add items easily, and move from cravings to checkout without friction.</p>
+        </article>
+
+        <article class="feature-card surface-card">
+          <h3>Trusted Restaurants</h3>
+          <p>Discover verified restaurant menus with food imagery that feels premium and inviting.</p>
+        </article>
+
+        <article class="feature-card surface-card">
+          <h3>Smooth Delivery Experience</h3>
+          <p>Delivery partners stay connected to active orders so fulfillment feels dependable and organized.</p>
+        </article>
+
+        <article class="feature-card surface-card">
+          <h3>Easy Platform Access</h3>
+          <p>Role-based entry keeps customer, restaurant, delivery, and admin journeys easy to understand.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="role-section" data-aos="fade-up">
+      <div class="section-heading">
+        <span class="dashboard-kicker">Choose your workspace</span>
+        <h2>Continue with the experience that fits your role.</h2>
+      </div>
+
+      <div class="role-grid">
+        <article class="role-card surface-card" (click)="navigateToRole('customer')">
+          <div class="role-card-image role-card-customer"></div>
+          <div class="role-card-body">
+            <h3>Continue as Customer</h3>
+            <p>Explore restaurants, menus, carts, and food ordering with a guest-friendly browsing flow.</p>
+            <span class="role-card-link">Open customer journey</span>
+          </div>
+        </article>
+
+        <article class="role-card surface-card" (click)="navigateToRole('restaurant')">
+          <div class="role-card-image role-card-restaurant"></div>
+          <div class="role-card-body">
+            <h3>Continue as Restaurant Owner</h3>
+            <p>Manage menus, track incoming orders, and maintain your brand identity from one dashboard.</p>
+            <span class="role-card-link">Open restaurant workspace</span>
+          </div>
+        </article>
+
+        <article class="role-card surface-card" (click)="navigateToRole('delivery-partner')">
+          <div class="role-card-image role-card-delivery"></div>
+          <div class="role-card-body">
+            <h3>Continue as Delivery Partner</h3>
+            <p>Review active deliveries, pickup details, and order progress with a streamlined delivery flow.</p>
+            <span class="role-card-link">Open delivery workspace</span>
+          </div>
+        </article>
+
+        <article class="role-card surface-card" (click)="navigateToRole('admin')">
+          <div class="role-card-image role-card-admin"></div>
+          <div class="role-card-body">
+            <h3>Continue as Admin</h3>
+            <p>Oversee platform users, restaurants, and delivery operations from the central control layer.</p>
+            <span class="role-card-link">Open admin workspace</span>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
 </section>
