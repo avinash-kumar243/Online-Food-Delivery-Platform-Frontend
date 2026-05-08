@@ -23,7 +23,7 @@ export class Welcome implements OnInit {
 
   navigateToRole(role: string) {
     if (role === 'customer') {
-      this.router.navigate(['/customer/auth']);
+      this.router.navigate(['/customer/dashboard']);
     } else if (role === 'restaurant') {
       this.router.navigate(['/restaurant/auth']);
     } else if (role === 'delivery-partner') {
@@ -34,6 +34,6 @@ export class Welcome implements OnInit {
   }
 
   goToCustomer() {
-    this.router.navigate(['/customer/auth']);
+    this.router.navigate(['/customer/dashboard']);
   }
 }
