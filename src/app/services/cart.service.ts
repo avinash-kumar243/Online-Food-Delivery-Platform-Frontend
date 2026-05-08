@@ -1,9 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AddToCartRequest, Cart } from '../models/app.models';
 import { roundCurrency } from './api.utils';
+
+export interface AddToCartResult {
+  cart: Cart;
+  switchedRestaurant: boolean;
+}
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
@@ -16,6 +22,22 @@ export class CartService {
 
   addToCart(payload: AddToCartRequest): Observable<Cart> {
     return this.http.post<Cart>(`${this.baseUrl}/cart/add`, payload);
+  }
+
+  addToCartWithRestaurantSwitch(payload: AddToCartRequest): Observable<AddToCartResult> {
+    return this.getCart(payload.customerId).pipe(
+      switchMap((cart) => {
+        const switchedRestaurant = !!cart.items.length
+          && cart.restaurantId != null
+          && cart.restaurantId !== payload.restaurantId;
+
+        const addRequest$ = switchedRestaurant
+          ? this.clearCart(payload.customerId).pipe(switchMap(() => this.addToCart(payload)))
+          : this.addToCart(payload);
+
+        return addRequest$.pipe(map((updatedCart) => ({ cart: updatedCart, switchedRestaurant })));
+      })
+    );
   }
 
   updateQuantity(customerId: number, itemId: number, quantity: number): Observable<Cart> {
