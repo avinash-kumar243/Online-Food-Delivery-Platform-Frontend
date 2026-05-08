@@ -65,7 +65,7 @@ export class DashboardRedirectComponent implements OnInit {
       }
 
       this.authService.clearInvalidSession();
-      this.router.navigate(['/customer/auth'], { replaceUrl: true });
+      this.router.navigate(['/customer/dashboard'], { replaceUrl: true });
     });
   }
 }
