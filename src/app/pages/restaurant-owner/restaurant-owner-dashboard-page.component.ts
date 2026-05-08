@@ -45,6 +45,14 @@ import { StatsService } from '../../services/stats.service';
           <div class="meta-row"><span>Approval</span><strong>{{ restaurant.approvalStatus || (restaurant.isApproved ? 'APPROVED' : 'PENDING') }}</strong></div>
           <div class="meta-row"><span>Submitted</span><strong>{{ restaurant.submittedAt || 'Not available' }}</strong></div>
           <div class="meta-row"><span>Menu access</span><strong>{{ restaurant.isApproved ? 'Enabled' : 'Disabled until approval' }}</strong></div>
+          <button
+            *ngIf="restaurant.isApproved"
+            type="button"
+            class="primary-btn status-toggle-btn"
+            [disabled]="updatingStatus()"
+            (click)="toggleRestaurantStatus()">
+            {{ updatingStatus() ? 'Updating...' : restaurant.isOpen ? 'Close restaurant' : 'Open restaurant' }}
+          </button>
         </div>
       </section>
 
@@ -107,6 +115,10 @@ import { StatsService } from '../../services/stats.service';
       font-size: clamp(1.7rem, 2.1vw, 2.4rem);
       line-height: 1.08;
     }
+    .status-toggle-btn {
+      width: 100%;
+      margin-top: 8px;
+    }
     @media (max-width: 860px) {
       .approved-actions,
       .hero-card {
@@ -131,6 +143,7 @@ export class RestaurantOwnerDashboardPageComponent {
   readonly restaurant = signal<Restaurant | null>(null);
   readonly stats = signal<DashboardStats | null>(null);
   readonly menuItems = signal<MenuItem[]>([]);
+  readonly updatingStatus = signal(false);
 
   constructor() {
     const ownerId = this.authService.getCurrentUser()?.id;
@@ -181,6 +194,27 @@ export class RestaurantOwnerDashboardPageComponent {
         error: (error) => {
           this.error.set(getErrorMessage(error));
           this.loading.set(false);
+        }
+      });
+  }
+
+  toggleRestaurantStatus(): void {
+    const restaurant = this.restaurant();
+    if (!restaurant || !restaurant.isApproved || this.updatingStatus()) {
+      return;
+    }
+
+    this.updatingStatus.set(true);
+    this.restaurantService.updateRestaurantStatus(restaurant.restaurantId, !restaurant.isOpen)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedRestaurant) => {
+          this.restaurant.set(updatedRestaurant);
+          this.updatingStatus.set(false);
+        },
+        error: (error) => {
+          this.error.set(getErrorMessage(error));
+          this.updatingStatus.set(false);
         }
       });
   }
