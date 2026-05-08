@@ -78,11 +78,13 @@ import { StatsService } from '../../services/stats.service';
 
       <section *ngIf="restaurant()?.isApproved" class="dashboard-section">
         <div class="section-header compact-header">
-          <div>
+          <div class="compact-header-copy">
             <span class="dashboard-kicker">Menu snapshot</span>
-            <h2>Items currently in your menu</h2>
+            <div class="compact-header-row">
+              <h2>Items currently in your menu</h2>
+              <a routerLink="/restaurant-owner/menu" class="secondary-btn compact-header-action">Open full menu</a>
+            </div>
           </div>
-          <a routerLink="/restaurant-owner/menu" class="secondary-btn">Open full menu</a>
         </div>
 
         <section *ngIf="menuItems().length; else noMenuItems" class="stats-grid">
@@ -102,7 +104,33 @@ import { StatsService } from '../../services/stats.service';
   styles: [`
     .hero-card, .stat-card { padding: 24px; }
     .approved-actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-    .compact-header h2 { margin: 0; }
+    .compact-header {
+      display: block;
+      margin-top: 14px;
+    }
+    .compact-header-copy {
+      display: grid;
+      gap: 12px;
+      padding-top: 12px;
+    }
+    .compact-header .dashboard-kicker {
+      margin: 0;
+    }
+    .compact-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .compact-header h2 {
+      margin: 0;
+      white-space: nowrap;
+    }
+    .compact-header-action {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
     .menu-card .value { font-size: 1.1rem; }
     h1 { font-size: clamp(2rem, 3vw, 3rem); }
     .hero-card {
@@ -125,6 +153,17 @@ import { StatsService } from '../../services/stats.service';
         grid-template-columns: 1fr;
         flex-direction: column;
         align-items: flex-start;
+      }
+      .compact-header,
+      .compact-header-copy {
+        display: grid;
+      }
+      .compact-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .compact-header-action {
+        width: auto;
       }
     }
   `],
