@@ -6,13 +6,15 @@ import { filter, map } from 'rxjs';
 import { CurrentUser, UserRole } from '../../models/auth.models';
 import { AdminService } from '../../services/admin.service';
 import { AuthService } from '../../services/auth.service';
+import { CustomerAccessService } from '../../services/customer-access.service';
 import { ProfileService } from '../../services/profile.service';
 import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
+import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, CustomerAuthPromptComponent],
   template: `
     <div class="app-shell dashboard-page">
       <header class="topbar surface-card">
@@ -32,7 +34,7 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
             <span class="brand-mark">QB</span>
             <div>
               <strong>QuickBite</strong>
-              <p>{{ roleLabel() }} workspace</p>
+              <p>{{ activeRoleLabel() }} workspace</p>
             </div>
           </div>
         </div>
@@ -53,22 +55,35 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
           </button>
 
           <div class="profile-dropdown surface-card" *ngIf="isProfileMenuOpen()" (click)="stopEvent($event)">
-            <button type="button" class="profile-identity" (click)="goToAccount()">
-              <span class="profile-avatar">
-                <ng-container *ngIf="profileImageUrl(); else dropdownAvatarFallback">
-                  <img class="avatar-image" [src]="profileImageUrl()!" alt="" />
-                </ng-container>
-                <ng-template #dropdownAvatarFallback>
-                  <span class="avatar-fallback">{{ avatarInitials() }}</span>
-                </ng-template>
-              </span>
-              <span class="profile-copy">
-                <strong>{{ displayName() }}</strong>
-                <small>{{ roleLabel() }}</small>
-              </span>
-            </button>
+            <ng-container *ngIf="isGuestCustomer(); else memberMenu">
+              <div class="guest-copy">
+                <strong>Browse as guest</strong>
+                <p>Login or sign up when you are ready to order, save addresses, and track deliveries.</p>
+              </div>
+              <div class="guest-actions">
+                <button type="button" class="secondary-btn" (click)="goToCustomerAuth('login')">Login</button>
+                <button type="button" class="primary-btn" (click)="goToCustomerAuth('signup')">Sign Up</button>
+              </div>
+            </ng-container>
 
-            <button type="button" class="dropdown-action" (click)="logout()">Logout</button>
+            <ng-template #memberMenu>
+              <div class="profile-identity">
+                <span class="profile-avatar">
+                  <ng-container *ngIf="profileImageUrl(); else dropdownAvatarFallback">
+                    <img class="avatar-image" [src]="profileImageUrl()!" alt="" />
+                  </ng-container>
+                  <ng-template #dropdownAvatarFallback>
+                    <span class="avatar-fallback">{{ avatarInitials() }}</span>
+                  </ng-template>
+                </span>
+                <span class="profile-copy">
+                  <strong>{{ displayName() }}</strong>
+                  <small>{{ activeRoleLabel() }}</small>
+                </span>
+              </div>
+              <button type="button" class="dropdown-action profile-action" (click)="goToAccount()">Profile</button>
+              <button type="button" class="dropdown-action" (click)="logout()">Logout</button>
+            </ng-template>
           </div>
         </div>
       </header>
@@ -84,19 +99,27 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       <aside class="sidebar surface-card" [class.sidebar-open]="isMobileNavOpen()">
         <div class="sidebar-head">
           <a class="brand" routerLink="/welcome">QuickBite</a>
-          <span class="sidebar-badge">{{ roleLabel() }}</span>
+          <span class="sidebar-badge">{{ activeRoleLabel() }}</span>
         </div>
-        <p class="sidebar-copy">Operational tools, live data, and account-specific workflows in one place.</p>
+        <p class="sidebar-copy">{{ sidebarCopy() }}</p>
 
         <nav class="nav-list">
-          <a
-            *ngFor="let item of navItems()"
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            (click)="closeMobileNav()"
-            class="nav-link">
-            {{ item.label }}
-          </a>
+          <ng-container *ngFor="let item of navItems()">
+            <a
+              *ngIf="!isProtectedCustomerLink(item.path); else gatedLink"
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              (click)="closeMobileNav()"
+              class="nav-link">
+              {{ item.label }}
+            </a>
+
+            <ng-template #gatedLink>
+              <button type="button" class="nav-link nav-link-button" (click)="handleProtectedCustomerLink(item.path)">
+                {{ item.label }}
+              </button>
+            </ng-template>
+          </ng-container>
         </nav>
       </aside>
 
@@ -106,6 +129,14 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
         </main>
       </div>
     </div>
+
+    <app-customer-auth-prompt
+      *ngIf="isCustomerContext()"
+      [config]="customerAccessService.authPrompt()"
+      (login)="customerAccessService.goToLogin()"
+      (signup)="customerAccessService.goToSignup()"
+      (cancel)="customerAccessService.closePrompt()">
+    </app-customer-auth-prompt>
   `,
   styles: [`
     :host {
@@ -215,19 +246,27 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
 
     .nav-link {
       display: block;
+      width: 100%;
       padding: 14px 16px;
       border-radius: 12px;
       color: var(--qb-text-muted);
       font-weight: 600;
       border: 1px solid transparent;
+      background: transparent;
+      text-align: left;
       transition: 0.2s ease;
     }
 
     .nav-link.active,
-    .nav-link:hover {
+    .nav-link:hover,
+    .nav-link-button:hover {
       color: var(--qb-primary);
       background: rgba(15, 122, 95, 0.08);
       border-color: rgba(15, 122, 95, 0.14);
+    }
+
+    .nav-link-button {
+      cursor: pointer;
     }
 
     .content {
@@ -331,18 +370,41 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       position: absolute;
       top: calc(100% + 12px);
       right: 0;
-      width: min(280px, calc(100vw - 24px));
+      width: min(320px, calc(100vw - 24px));
       padding: 12px;
       border-radius: 20px;
       background: rgba(255, 255, 255, 0.95);
       z-index: 80;
+      display: grid;
+      gap: 10px;
+    }
+
+    .guest-copy {
+      display: grid;
+      gap: 6px;
+      padding: 6px;
+    }
+
+    .guest-copy p {
+      color: var(--qb-text-muted);
+      line-height: 1.6;
+      font-size: 0.92rem;
+    }
+
+    .guest-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .profile-identity,
     .dropdown-action {
       width: 100%;
-      border: 0;
       background: transparent;
+    }
+
+    .dropdown-action {
+      border: 0;
       cursor: pointer;
     }
 
@@ -355,7 +417,10 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       text-align: left;
     }
 
-    .profile-identity:hover,
+    .profile-action {
+      color: var(--qb-text);
+    }
+
     .dropdown-action:hover {
       background: rgba(15, 122, 95, 0.06);
     }
@@ -383,7 +448,6 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
       align-items: center;
       justify-content: flex-start;
       min-height: 46px;
-      margin-top: 8px;
       padding: 0 10px;
       border-radius: 14px;
       color: var(--qb-danger);
@@ -451,11 +515,6 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
         border: 0;
         background: rgba(15, 23, 42, 0.24);
       }
-
-      .app-shell-main {
-        width: min(1300px, 100%);
-        padding-top: 0;
-      }
     }
 
     @media (max-width: 720px) {
@@ -471,6 +530,10 @@ import { ROLE_LABELS, ROLE_NAV_ITEMS } from '../../shared/role-config';
         min-height: calc(100vh - var(--shell-header-height) - var(--shell-gap) - 18px);
         padding-right: 12px;
         padding-left: 12px;
+      }
+
+      .guest-actions {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -501,16 +564,24 @@ export class AppShellComponent {
   private readonly router = inject(Router);
   private readonly profileService = inject(ProfileService);
   private readonly adminService = inject(AdminService);
+  readonly customerAccessService = inject(CustomerAccessService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly currentUser = signal<CurrentUser | null>(this.authService.getCurrentUser());
-  readonly navItems = computed(() => ROLE_NAV_ITEMS[this.currentUser()?.role ?? 'CUSTOMER']);
-  readonly roleLabel = computed(() => ROLE_LABELS[this.currentUser()?.role ?? 'CUSTOMER']);
+  readonly currentUrl = signal(this.router.url);
+  readonly activeRole = computed<UserRole>(() => this.currentUrl().startsWith('/customer') ? 'CUSTOMER' : this.currentUser()?.role ?? 'CUSTOMER');
+  readonly activeRoleLabel = computed(() => ROLE_LABELS[this.activeRole()]);
+  readonly navItems = computed(() => ROLE_NAV_ITEMS[this.activeRole()]);
   readonly displayName = computed(() => this.currentUser()?.fullName?.trim() || this.currentUser()?.email || 'QuickBite user');
   readonly avatarInitials = computed(() => this.buildInitials(this.currentUser()?.fullName, this.currentUser()?.email));
   readonly profileImageUrl = computed(() => this.currentUser()?.profilePicUrl?.trim() || '');
   readonly isMobileNavOpen = signal(false);
   readonly isProfileMenuOpen = signal(false);
+  readonly isCustomerContext = computed(() => this.activeRole() === 'CUSTOMER');
+  readonly isGuestCustomer = computed(() => this.isCustomerContext() && !this.customerAccessService.isCustomerLoggedIn());
+  readonly sidebarCopy = computed(() => this.isCustomerContext()
+    ? 'Browse restaurants, menus, offers, and featured dishes. Login only when you want to order or save personal data.'
+    : 'Operational tools, live data, and account-specific workflows in one place.');
 
   private hydratedProfileKey: string | null = null;
 
@@ -527,9 +598,11 @@ export class AppShellComponent {
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(() => {
+      .subscribe((event) => {
+        this.currentUrl.set(event.urlAfterRedirects);
         this.closeMobileNav();
         this.closeProfileMenu();
+        this.customerAccessService.closePrompt();
       });
   }
 
@@ -563,20 +636,41 @@ export class AppShellComponent {
     this.isProfileMenuOpen.set(false);
   }
 
+  isProtectedCustomerLink(path: string): boolean {
+    return this.isGuestCustomer() && ['/customer/cart', '/customer/orders', '/customer/stats', '/customer/profile'].some((protectedPath) => path.startsWith(protectedPath));
+  }
+
+  handleProtectedCustomerLink(path: string): void {
+    this.closeMobileNav();
+    this.closeProfileMenu();
+    this.customerAccessService.requestAuth(path);
+  }
+
+  goToCustomerAuth(mode: 'login' | 'signup'): void {
+    this.closeProfileMenu();
+    this.router.navigate(['/customer/auth'], {
+      queryParams: {
+        returnUrl: this.currentUrl(),
+        mode
+      }
+    });
+  }
+
   goToAccount(): void {
     this.closeProfileMenu();
-    const role = this.currentUser()?.role;
-    if (!role) {
+    const role = this.activeRole();
+    const target = role === 'CUSTOMER'
+      ? '/customer/profile'
+      : role === 'RESTAURANT_OWNER'
+        ? '/restaurant-owner/profile'
+        : role === 'DELIVERY_PARTNER'
+          ? '/delivery-partner/profile'
+          : '/admin/dashboard';
+
+    if (role === 'CUSTOMER' && this.isGuestCustomer()) {
+      this.customerAccessService.requestAuth(target);
       return;
     }
-
-    const target = role === 'CUSTOMER'
-      ? '/customer/stats'
-      : role === 'RESTAURANT_OWNER'
-        ? '/restaurant-owner/stats'
-        : role === 'DELIVERY_PARTNER'
-          ? '/delivery-partner/earnings'
-          : '/admin/dashboard';
 
     this.router.navigateByUrl(target);
   }
