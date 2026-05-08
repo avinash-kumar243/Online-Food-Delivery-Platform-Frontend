@@ -74,6 +74,11 @@ import { OrderReviewService } from '../../services/order-review.service';
       width: min(560px, 100%);
       padding: 24px;
       border-radius: 18px;
+      border: 1px solid rgba(15, 122, 95, 0.12);
+      background:
+        radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 14rem),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 248, 0.98));
+      box-shadow: 0 24px 54px rgba(15, 23, 42, 0.18);
     }
     .review-header, .actions {
       display: flex;
