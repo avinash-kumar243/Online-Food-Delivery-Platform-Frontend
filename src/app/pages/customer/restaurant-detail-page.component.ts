@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
 import { AuthService } from '../../services/auth.service';
 import { CartService } from '../../services/cart.service';
+import { CustomerAccessService } from '../../services/customer-access.service';
 import { MenuService } from '../../services/menu.service';
 import { NotificationService } from '../../services/notification.service';
 import { RestaurantService } from '../../services/restaurant.service';
@@ -223,7 +224,9 @@ export class RestaurantDetailPageComponent {
   private readonly menuService = inject(MenuService);
   private readonly cartService = inject(CartService);
   private readonly authService = inject(AuthService);
+  private readonly customerAccessService = inject(CustomerAccessService);
   private readonly notificationService = inject(NotificationService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
@@ -267,10 +270,12 @@ export class RestaurantDetailPageComponent {
   }
 
   addToCart(item: MenuItem): void {
+    const currentRole = this.authService.getUserRole();
     const customerId = this.authService.getCurrentUser()?.id;
     const restaurantId = this.restaurant()?.restaurantId;
     const isOpen = this.restaurant()?.isOpen;
-    if (!customerId || !restaurantId) {
+    if (currentRole !== 'CUSTOMER' || !customerId || !restaurantId) {
+      this.customerAccessService.requestAuth(this.router.url, 'Please login or sign up to continue.');
       return;
     }
     if (!isOpen) {
@@ -279,7 +284,7 @@ export class RestaurantDetailPageComponent {
     }
 
     this.addingItemId.set(item.itemId);
-    this.cartService.addToCart({
+    this.cartService.addToCartWithRestaurantSwitch({
       customerId,
       restaurantId,
       menuItemId: item.itemId,
@@ -289,8 +294,12 @@ export class RestaurantDetailPageComponent {
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          this.notificationService.success(`${item.name} added to cart.`);
+        next: ({ switchedRestaurant }) => {
+          this.notificationService.success(
+            switchedRestaurant
+              ? 'Previous cart cleared. Added item from the new restaurant.'
+              : `${item.name} added to cart.`
+          );
           this.addingItemId.set(null);
         },
         error: (error) => {
