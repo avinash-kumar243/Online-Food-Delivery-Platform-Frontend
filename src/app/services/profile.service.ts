@@ -13,15 +13,45 @@ export class ProfileService {
     return this.http.get<CustomerProfile>(`${this.authBaseUrl}/auth/customer/profile/${customerId}`);
   }
 
+  updateCustomerProfile(customerId: number, payload: {
+    fullName: string;
+    phone: string;
+    profilePicUrl: string;
+  }): Observable<CustomerProfile> {
+    return this.http.put<CustomerProfile>(`${this.authBaseUrl}/auth/customer/profile/${customerId}`, payload);
+  }
+
   getRestaurantOwnerProfile(ownerId: number): Observable<RestaurantOwnerProfile> {
     return this.http.get<RestaurantOwnerProfile>(`${this.authBaseUrl}/auth/restaurant/profile/${ownerId}`);
+  }
+
+  updateRestaurantOwnerProfile(
+    ownerId: number,
+    payload: {
+      fullName: string;
+      phone: string;
+      restaurantName: string;
+      restaurantAddress: string;
+      profilePicUrl: string;
+    }
+  ): Observable<RestaurantOwnerProfile> {
+    return this.http.put<RestaurantOwnerProfile>(`${this.authBaseUrl}/auth/restaurant/profile/${ownerId}`, payload);
   }
 
   getDeliveryPartnerProfile(partnerId: number): Observable<DeliveryPartner> {
     return this.http.get<DeliveryPartner>(`${this.authBaseUrl}/auth/delivery-partner/profile/${partnerId}`);
   }
 
-  updateDeliveryPartnerProfile(partnerId: number, payload: Record<string, unknown>): Observable<DeliveryPartner> {
+  updateDeliveryPartnerProfile(partnerId: number, payload: {
+    fullName: string;
+    phone: string;
+    vehicleType: string;
+    vehicleNumber: string;
+    licenseNumber: string;
+    profilePicUrl: string;
+    isVerified: boolean;
+    isOnline: boolean;
+  }): Observable<DeliveryPartner> {
     return this.http.put<DeliveryPartner>(`${this.authBaseUrl}/auth/delivery-partner/profile/${partnerId}`, payload);
   }
 }
