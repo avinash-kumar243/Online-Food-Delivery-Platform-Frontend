@@ -17,8 +17,8 @@ import { ProfileService } from '../../services/profile.service';
     <section class="section-header">
       <div>
         <span class="dashboard-kicker">Delivery profile</span>
-        <h1>Update your vehicle and rider details.</h1>
-        <p class="dashboard-subtitle">Email, full name, and phone stay fixed here. Delivery-related profile fields can be updated below.</p>
+        <h1>Review and update your account details.</h1>
+        <p class="dashboard-subtitle">Keep your name, phone number, and profile image up to date for a cleaner delivery partner profile.</p>
       </div>
     </section>
 
@@ -32,11 +32,16 @@ import { ProfileService } from '../../services/profile.service';
           <ng-template #initialsFallback>{{ initials() }}</ng-template>
         </div>
         <strong>{{ form.controls.fullName.value }}</strong>
-        <p>Keep rider details accurate so deliveries and identity checks stay smooth.</p>
+        <p>{{ profile()?.phone }}</p>
         <span class="badge-chip">{{ profile()?.isVerified ? 'Verified partner' : 'Verification pending' }}</span>
       </article>
 
       <article class="surface-card profile-form-card">
+        <div class="form-intro">
+          <h2>My delivery profile</h2>
+          <p>Update only the essential profile details below.</p>
+        </div>
+
         <div class="form-grid">
           <label>
             <span>Full name</span>
@@ -45,23 +50,8 @@ import { ProfileService } from '../../services/profile.service';
           </label>
           <label>
             <span>Phone number</span>
-            <input formControlName="phone" placeholder="Enter your phone number" />
-            <small *ngIf="form.controls.phone.invalid && form.controls.phone.touched">Enter a valid 10-digit phone number.</small>
-          </label>
-          <label>
-            <span>Vehicle type</span>
-            <input formControlName="vehicleType" placeholder="Bike, scooter, bicycle, etc." />
-            <small *ngIf="form.controls.vehicleType.invalid && form.controls.vehicleType.touched">Vehicle type is required.</small>
-          </label>
-          <label>
-            <span>Vehicle number</span>
-            <input formControlName="vehicleNumber" placeholder="Enter your vehicle number" />
-            <small *ngIf="form.controls.vehicleNumber.invalid && form.controls.vehicleNumber.touched">Vehicle number is required.</small>
-          </label>
-          <label>
-            <span>License number</span>
-            <input formControlName="licenseNumber" placeholder="Enter your license number" />
-            <small *ngIf="form.controls.licenseNumber.invalid && form.controls.licenseNumber.touched">License number is required.</small>
+            <input formControlName="phone" placeholder="Enter your phone number" inputmode="numeric" maxlength="10" />
+            <small *ngIf="phoneHasInvalidValue()">Phone number must contain exactly 10 digits.</small>
           </label>
           <label>
             <span>Profile image URL</span>
@@ -106,6 +96,18 @@ import { ProfileService } from '../../services/profile.service';
     }
     .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .profile-summary-card p { color: var(--qb-text-muted); line-height: 1.6; }
+    .form-intro {
+      margin-bottom: 20px;
+    }
+    .form-intro h2 {
+      margin-bottom: 8px;
+      font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+      line-height: 1.1;
+    }
+    .form-intro p {
+      color: var(--qb-text-muted);
+      line-height: 1.6;
+    }
     .form-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
@@ -153,9 +155,6 @@ export class PartnerProfilePageComponent {
   readonly form = this.fb.nonNullable.group({
     fullName: ['', Validators.required],
     phone: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
-    vehicleType: ['', Validators.required],
-    vehicleNumber: ['', Validators.required],
-    licenseNumber: ['', Validators.required],
     profilePicUrl: ['']
   });
 
@@ -175,9 +174,6 @@ export class PartnerProfilePageComponent {
           this.form.patchValue({
             fullName: profile.fullName ?? '',
             phone: profile.phone ?? '',
-            vehicleType: profile.vehicleType ?? '',
-            vehicleNumber: profile.vehicleNumber ?? '',
-            licenseNumber: profile.licenseNumber ?? '',
             profilePicUrl: profile.profilePicUrl ?? ''
           });
           this.loading.set(false);
@@ -194,7 +190,12 @@ export class PartnerProfilePageComponent {
   }
 
   initials(): string {
-    return this.profile()?.fullName?.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'DP';
+    return this.form.controls.fullName.value.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'DP';
+  }
+
+  phoneHasInvalidValue(): boolean {
+    const control = this.form.controls.phone;
+    return control.invalid && (control.dirty || control.touched);
   }
 
   save(): void {
@@ -209,9 +210,9 @@ export class PartnerProfilePageComponent {
     this.profileService.updateDeliveryPartnerProfile(partnerId, {
       fullName: this.form.controls.fullName.value.trim(),
       phone: this.form.controls.phone.value.trim(),
-      vehicleType: this.form.controls.vehicleType.value.trim(),
-      vehicleNumber: this.form.controls.vehicleNumber.value.trim(),
-      licenseNumber: this.form.controls.licenseNumber.value.trim(),
+      vehicleType: profile.vehicleType?.trim() ?? '',
+      vehicleNumber: profile.vehicleNumber?.trim() ?? '',
+      licenseNumber: profile.licenseNumber?.trim() ?? '',
       profilePicUrl: this.form.controls.profilePicUrl.value.trim(),
       isVerified: profile.isVerified ?? false,
       isOnline: profile.isOnline ?? false
@@ -223,9 +224,6 @@ export class PartnerProfilePageComponent {
           this.form.patchValue({
             fullName: updated.fullName ?? '',
             phone: updated.phone ?? '',
-            vehicleType: updated.vehicleType ?? '',
-            vehicleNumber: updated.vehicleNumber ?? '',
-            licenseNumber: updated.licenseNumber ?? '',
             profilePicUrl: updated.profilePicUrl ?? ''
           });
           this.authService.updateCurrentUserProfile({
