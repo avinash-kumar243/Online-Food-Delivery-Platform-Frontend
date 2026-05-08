@@ -29,14 +29,22 @@ import { ProfileService } from '../../services/profile.service';
         <label><span>License number</span><input formControlName="licenseNumber" /></label>
         <label><span>Address</span><input formControlName="address" /></label>
       </div>
-      <button type="submit" class="primary-btn" [disabled]="submitting() || form.invalid">{{ submitting() ? 'Submitting...' : existingFeedback() ? 'Resubmit profile' : 'Submit profile' }}</button>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn" [disabled]="submitting() || form.invalid">{{ submitting() ? 'Submitting...' : existingFeedback() ? 'Resubmit profile' : 'Submit profile' }}</button>
+      </div>
     </form>
   `,
   styles: [`
     .form-card { padding: 24px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
     label span { display: block; font-weight: 600; margin-bottom: 8px; }
     input { width: 100%; border: 1px solid var(--qb-border); border-radius: 14px; padding: 12px 14px; }
+    .form-actions { margin-top: 24px; display: flex; justify-content: flex-start; }
+    @media (max-width: 860px) {
+      .form-actions {
+        width: 100%;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
