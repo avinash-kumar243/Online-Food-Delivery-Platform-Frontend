@@ -5,6 +5,7 @@ import { DeliveryPartnerAuthComponent } from './components/auth/delivery-partner
 import { Welcome } from './components/welcome/welcome';
 import { AppShellComponent } from './components/shell/app-shell.component';
 import { authGuard } from './guards/auth.guard';
+import { customerAuthGuard } from './guards/customer-auth.guard';
 import { dashboardRoleGuard } from './guards/dashboard-role.guard';
 import { DashboardRedirectComponent } from './pages/dashboard-redirect/dashboard-redirect.component';
 import { AdminAnalyticsPageComponent } from './pages/admin/admin-analytics-page.component';
@@ -21,15 +22,18 @@ import { CustomerCartPageComponent } from './pages/customer/customer-cart-page.c
 import { CustomerDashboardPageComponent } from './pages/customer/customer-dashboard-page.component';
 import { CustomerOrderDetailPageComponent } from './pages/customer/customer-order-detail-page.component';
 import { CustomerOrdersPageComponent } from './pages/customer/customer-orders-page.component';
+import { CustomerProfilePageComponent } from './pages/customer/customer-profile-page.component';
 import { CustomerRestaurantsPageComponent } from './pages/customer/customer-restaurants-page.component';
 import { CustomerStatsPageComponent } from './pages/customer/customer-stats-page.component';
 import { RestaurantDetailPageComponent } from './pages/customer/restaurant-detail-page.component';
 import { AvailableOrdersPageComponent } from './pages/delivery-partner/available-orders-page.component';
 import { DeliveryPartnerDashboardPageComponent } from './pages/delivery-partner/delivery-partner-dashboard-page.component';
+import { PartnerProfilePageComponent } from './pages/delivery-partner/partner-profile-page.component';
 import { DeliveryRegistrationPageComponent } from './pages/delivery-partner/delivery-registration-page.component';
 import { MyDeliveriesPageComponent } from './pages/delivery-partner/my-deliveries-page.component';
 import { PartnerEarningsPageComponent } from './pages/delivery-partner/partner-earnings-page.component';
 import { MenuItemFormPageComponent } from './pages/restaurant-owner/menu-item-form-page.component';
+import { OwnerProfilePageComponent } from './pages/restaurant-owner/owner-profile-page.component';
 import { OwnerMenuPageComponent } from './pages/restaurant-owner/owner-menu-page.component';
 import { OwnerOrdersPageComponent } from './pages/restaurant-owner/owner-orders-page.component';
 import { OwnerStatsPageComponent } from './pages/restaurant-owner/owner-stats-page.component';
@@ -53,16 +57,16 @@ export const routes: Routes = [
   {
     path: 'customer',
     component: AppShellComponent,
-    canActivate: [authGuard, dashboardRoleGuard],
     data: { role: 'CUSTOMER' },
     children: [
       { path: 'dashboard', component: CustomerDashboardPageComponent },
       { path: 'restaurants', component: CustomerRestaurantsPageComponent },
       { path: 'restaurants/:restaurantId', component: RestaurantDetailPageComponent },
-      { path: 'cart', component: CustomerCartPageComponent },
-      { path: 'orders', component: CustomerOrdersPageComponent },
-      { path: 'orders/:orderId', component: CustomerOrderDetailPageComponent },
-      { path: 'stats', component: CustomerStatsPageComponent },
+      { path: 'cart', component: CustomerCartPageComponent, canActivate: [customerAuthGuard] },
+      { path: 'orders', component: CustomerOrdersPageComponent, canActivate: [customerAuthGuard] },
+      { path: 'orders/:orderId', component: CustomerOrderDetailPageComponent, canActivate: [customerAuthGuard] },
+      { path: 'stats', component: CustomerStatsPageComponent, canActivate: [customerAuthGuard] },
+      { path: 'profile', component: CustomerProfilePageComponent, canActivate: [customerAuthGuard] },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
@@ -79,6 +83,7 @@ export const routes: Routes = [
       { path: 'menu/edit/:itemId', component: MenuItemFormPageComponent },
       { path: 'orders', component: OwnerOrdersPageComponent },
       { path: 'stats', component: OwnerStatsPageComponent },
+      { path: 'profile', component: OwnerProfilePageComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
@@ -93,6 +98,7 @@ export const routes: Routes = [
       { path: 'available-orders', component: AvailableOrdersPageComponent },
       { path: 'my-deliveries', component: MyDeliveriesPageComponent },
       { path: 'earnings', component: PartnerEarningsPageComponent },
+      { path: 'profile', component: PartnerProfilePageComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
