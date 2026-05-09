@@ -2,9 +2,11 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { filter, interval, map } from 'rxjs';
+import { AppNotification } from '../../models/app.models';
 import { CurrentUser, UserRole } from '../../models/auth.models';
 import { AdminService } from '../../services/admin.service';
+import { AppNotificationService } from '../../services/app-notification.service';
 import { AuthService } from '../../services/auth.service';
 import { CustomerAccessService } from '../../services/customer-access.service';
 import { ProfileService } from '../../services/profile.service';
@@ -40,6 +42,67 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
         </div>
 
         <div class="topbar-actions">
+          <div class="notification-wrap" *ngIf="showNotificationBell()">
+            <button
+              type="button"
+              class="icon-toggle notification-toggle"
+              (click)="toggleNotificationMenu($event)"
+              [attr.aria-expanded]="isNotificationMenuOpen()"
+              aria-label="Open notifications">
+              <svg class="bell-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0H9m6 0a3 3 0 0 1-6 0"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+              <span class="notification-badge" *ngIf="unreadCount() > 0">{{ unreadBadge() }}</span>
+            </button>
+
+            <div class="notification-dropdown surface-card" *ngIf="isNotificationMenuOpen()" (click)="stopEvent($event)">
+              <div class="notification-head">
+                <div class="notification-head-copy">
+                  <strong>Notifications</strong>
+                  <p *ngIf="unreadCount() > 0">{{ unreadCount() }} unread update{{ unreadCount() === 1 ? '' : 's' }}</p>
+                  <p *ngIf="unreadCount() === 0">Everything is up to date.</p>
+                </div>
+                <button
+                  type="button"
+                  class="notification-mark-read"
+                  *ngIf="unreadCount() > 0"
+                  (click)="markAllNotificationsRead()">
+                  Mark all read
+                </button>
+              </div>
+
+              <div class="notification-empty" *ngIf="notificationState.isLoading() && !notifications().length">
+                Loading notifications...
+              </div>
+
+              <div class="notification-empty" *ngIf="!notificationState.isLoading() && !notifications().length">
+                No notifications yet.
+              </div>
+
+              <div class="notification-list" *ngIf="notifications().length">
+                <button
+                  type="button"
+                  class="notification-item"
+                  *ngFor="let notification of notifications(); trackBy: trackNotification"
+                  [class.notification-item-unread]="!notification.isRead"
+                  (click)="openNotification(notification)">
+                  <span class="notification-item-title">{{ notification.title }}</span>
+                  <span class="notification-item-message">{{ notification.message }}</span>
+                  <span class="notification-item-meta">
+                    {{ formatRelativeTime(notification.sentAt) }}
+                    <strong *ngIf="!notification.isRead">Unread</strong>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <button
             type="button"
             class="icon-toggle account-toggle"
@@ -317,6 +380,11 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       flex-shrink: 0;
     }
 
+    .notification-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+
     .icon-toggle {
       border: 1px solid rgba(148, 163, 184, 0.2);
       background: rgba(255, 255, 255, 0.82);
@@ -350,6 +418,42 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       background: var(--qb-text);
     }
 
+    .notification-toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border-radius: 14px;
+      color: var(--qb-text);
+      flex-shrink: 0;
+    }
+
+    .bell-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--qb-danger);
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      box-shadow: 0 8px 16px rgba(201, 59, 49, 0.24);
+    }
+
     .account-toggle,
     .profile-avatar {
       display: inline-flex;
@@ -380,6 +484,22 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       font-weight: 700;
     }
 
+    .notification-dropdown {
+      position: absolute;
+      top: calc(100% + 12px);
+      right: 0;
+      width: min(360px, calc(100vw - 24px));
+      min-width: 280px;
+      max-height: min(460px, calc(100vh - 120px));
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.96);
+      z-index: 80;
+      display: grid;
+      gap: 12px;
+      overflow: hidden;
+    }
+
     .profile-dropdown {
       position: absolute;
       top: calc(100% + 12px);
@@ -395,6 +515,106 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       gap: 12px;
       justify-items: center;
       text-align: center;
+    }
+
+    .notification-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .notification-head-copy {
+      display: grid;
+      gap: 4px;
+    }
+
+    .notification-head-copy strong {
+      font-size: 0.98rem;
+      font-weight: 760;
+    }
+
+    .notification-head-copy p {
+      margin: 0;
+      color: var(--qb-text-muted);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .notification-mark-read {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--qb-primary);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .notification-list {
+      display: grid;
+      gap: 10px;
+      max-height: 330px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .notification-item {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 16px;
+      background: rgba(248, 250, 252, 0.76);
+      padding: 12px 14px;
+      display: grid;
+      gap: 6px;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .notification-item:hover {
+      transform: translateY(-1px);
+      border-color: rgba(15, 122, 95, 0.18);
+    }
+
+    .notification-item-unread {
+      background: rgba(15, 122, 95, 0.08);
+      border-color: rgba(15, 122, 95, 0.18);
+    }
+
+    .notification-item-title {
+      font-size: 0.92rem;
+      font-weight: 760;
+      color: var(--qb-text);
+    }
+
+    .notification-item-message {
+      font-size: 0.84rem;
+      line-height: 1.5;
+      color: var(--qb-text-muted);
+    }
+
+    .notification-item-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.76rem;
+      color: var(--qb-text-muted);
+    }
+
+    .notification-item-meta strong {
+      color: var(--qb-primary);
+      font-weight: 800;
+    }
+
+    .notification-empty {
+      padding: 14px 4px 6px;
+      color: var(--qb-text-muted);
+      text-align: center;
+      font-size: 0.9rem;
+      line-height: 1.5;
     }
 
     .guest-copy {
@@ -562,6 +782,11 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
         grid-template-columns: 1fr;
       }
 
+      .notification-dropdown {
+        min-width: 0;
+        width: min(320px, calc(100vw - 20px));
+      }
+
       .profile-dropdown {
         min-width: 210px;
         max-width: min(260px, calc(100vw - 20px));
@@ -600,6 +825,10 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
         margin-left: 2px;
         padding-inline: 10px;
       }
+
+      .notification-dropdown {
+        width: min(300px, calc(100vw - 18px));
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -609,6 +838,7 @@ export class AppShellComponent {
   private readonly router = inject(Router);
   private readonly profileService = inject(ProfileService);
   private readonly adminService = inject(AdminService);
+  readonly notificationState = inject(AppNotificationService);
   readonly customerAccessService = inject(CustomerAccessService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -620,10 +850,14 @@ export class AppShellComponent {
   readonly displayName = computed(() => this.currentUser()?.fullName?.trim() || this.currentUser()?.email || 'QuickBite user');
   readonly avatarInitials = computed(() => this.buildInitials(this.currentUser()?.fullName, this.currentUser()?.email));
   readonly profileImageUrl = computed(() => this.currentUser()?.profilePicUrl?.trim() || '');
+  readonly notifications = computed(() => this.notificationState.notifications());
+  readonly unreadCount = computed(() => this.notificationState.unreadCount());
   readonly isMobileNavOpen = signal(false);
   readonly isProfileMenuOpen = signal(false);
+  readonly isNotificationMenuOpen = signal(false);
   readonly isCustomerContext = computed(() => this.activeRole() === 'CUSTOMER');
   readonly isGuestCustomer = computed(() => this.isCustomerContext() && !this.customerAccessService.isCustomerLoggedIn());
+  readonly showNotificationBell = computed(() => Boolean(this.currentUser()) && !this.isGuestCustomer());
   readonly showsStandaloneRoleBadge = computed(() => {
     const role = this.activeRole();
     return role === 'CUSTOMER'
@@ -643,6 +877,15 @@ export class AppShellComponent {
       .subscribe((user) => {
         this.currentUser.set(user);
         this.hydrateProfile(user);
+
+        if (user && (!this.isCustomerContext() || !this.isGuestCustomer())) {
+          this.refreshUnreadCount();
+          if (this.isNotificationMenuOpen()) {
+            this.loadNotifications();
+          }
+        } else {
+          this.notificationState.clear();
+        }
       });
 
     this.router.events
@@ -654,7 +897,25 @@ export class AppShellComponent {
         this.currentUrl.set(event.urlAfterRedirects);
         this.closeMobileNav();
         this.closeProfileMenu();
+        this.closeNotificationMenu();
         this.customerAccessService.closePrompt();
+
+        if (this.showNotificationBell()) {
+          this.refreshUnreadCount();
+        }
+      });
+
+    interval(30000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (!this.showNotificationBell()) {
+          return;
+        }
+
+        this.refreshUnreadCount();
+        if (this.isNotificationMenuOpen()) {
+          this.loadNotifications();
+        }
       });
   }
 
@@ -662,6 +923,7 @@ export class AppShellComponent {
   closeMenusFromDocument(): void {
     this.closeMobileNav();
     this.closeProfileMenu();
+    this.closeNotificationMenu();
   }
 
   stopEvent(event: Event): void {
@@ -672,6 +934,7 @@ export class AppShellComponent {
     event.stopPropagation();
     this.isMobileNavOpen.update((open) => !open);
     this.isProfileMenuOpen.set(false);
+    this.isNotificationMenuOpen.set(false);
   }
 
   closeMobileNav(): void {
@@ -682,10 +945,33 @@ export class AppShellComponent {
     event.stopPropagation();
     this.isProfileMenuOpen.update((open) => !open);
     this.isMobileNavOpen.set(false);
+    this.isNotificationMenuOpen.set(false);
   }
 
   closeProfileMenu(): void {
     this.isProfileMenuOpen.set(false);
+  }
+
+  toggleNotificationMenu(event: MouseEvent): void {
+    event.stopPropagation();
+
+    if (!this.showNotificationBell()) {
+      return;
+    }
+
+    const nextState = !this.isNotificationMenuOpen();
+    this.isNotificationMenuOpen.set(nextState);
+    this.isMobileNavOpen.set(false);
+    this.isProfileMenuOpen.set(false);
+
+    if (nextState) {
+      this.loadNotifications();
+      this.refreshUnreadCount();
+    }
+  }
+
+  closeNotificationMenu(): void {
+    this.isNotificationMenuOpen.set(false);
   }
 
   isProtectedCustomerLink(path: string): boolean {
@@ -695,6 +981,7 @@ export class AppShellComponent {
   handleProtectedCustomerLink(path: string): void {
     this.closeMobileNav();
     this.closeProfileMenu();
+    this.closeNotificationMenu();
     this.customerAccessService.requestAuth(path);
   }
 
@@ -729,7 +1016,80 @@ export class AppShellComponent {
 
   logout(): void {
     this.closeProfileMenu();
+    this.closeNotificationMenu();
+    this.notificationState.clear();
     this.authService.logout();
+  }
+
+  markAllNotificationsRead(): void {
+    this.notificationState.markAllRead()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: () => undefined
+      });
+  }
+
+  openNotification(notification: AppNotification): void {
+    if (notification.isRead) {
+      return;
+    }
+
+    this.notificationState.markAsRead(notification.notificationId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: () => undefined
+      });
+  }
+
+  trackNotification(_index: number, notification: AppNotification): number {
+    return notification.notificationId;
+  }
+
+  unreadBadge(): string {
+    return this.unreadCount() > 99 ? '99+' : String(this.unreadCount());
+  }
+
+  formatRelativeTime(value?: string | null): string {
+    if (!value) {
+      return 'Just now';
+    }
+
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) {
+      return 'Just now';
+    }
+
+    const diff = Math.max(0, Date.now() - timestamp);
+    const minute = 60_000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+
+    if (diff < minute) {
+      return 'Just now';
+    }
+    if (diff < hour) {
+      return `${Math.floor(diff / minute)} min ago`;
+    }
+    if (diff < day) {
+      return `${Math.floor(diff / hour)} hr ago`;
+    }
+    return `${Math.floor(diff / day)} day${diff >= 2 * day ? 's' : ''} ago`;
+  }
+
+  private loadNotifications(): void {
+    this.notificationState.loadNotifications()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: () => undefined
+      });
+  }
+
+  private refreshUnreadCount(): void {
+    this.notificationState.loadUnreadCount()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: () => undefined
+      });
   }
 
   private hydrateProfile(user: CurrentUser | null): void {
