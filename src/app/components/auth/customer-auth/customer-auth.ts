@@ -2,7 +2,7 @@ import { Component, ChangeDetectorRef, inject, OnDestroy, OnInit } from '@angula
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';  // Used to navigate from one page to another.
 import { finalize } from 'rxjs/operators';
 
 @Component({
@@ -335,6 +335,7 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
           setTimeout(() => {
             this.closeForgotPasswordModal();
             this.router.navigate(['/customer/auth']);
+
           }, 1200);
         },
         error: (err) => {
