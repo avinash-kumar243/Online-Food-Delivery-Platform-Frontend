@@ -411,3 +411,18 @@ export interface ShellNavItem {
   path: string;
   icon: string;
 }
+
+export interface AppNotification {
+  notificationId: number;
+  recipientId: number;
+  recipientRole?: UserRole | string | null;
+  sentAt: string;
+  type: string;
+  channel: string;
+  title: string;
+  message: string;
+  relatedId?: string | null;
+  relatedType?: string | null;
+  isRead: boolean;
+  readAt?: string | null;
+}
