@@ -1,0 +1,284 @@
+<ng-container *ngIf="dashboard$ | async as dashboard">
+  <div class="dashboard-page">
+    <app-dashboard-header [user]="dashboard.user"></app-dashboard-header>
+
+    <main class="dashboard-main">
+      <section class="hero-grid">
+        <article class="surface-card hero-card">
+          <p class="dashboard-kicker">Restaurant Owner Dashboard</p>
+          <h1>Welcome, Restaurant Owner</h1>
+          <p class="dashboard-subtitle">
+            Manage your restaurant, menu, orders, earnings, and customer reviews.
+          </p>
+
+          <div class="hero-actions">
+            <button type="button" class="primary-btn">Manage Menu</button>
+            <button type="button" class="secondary-btn">View Incoming Orders</button>
+          </div>
+
+          <div class="hero-strip">
+            <div>
+              <strong>{{ dashboard.stats[0]?.value || '0' }}</strong>
+              <span>Today's orders</span>
+            </div>
+            <div>
+              <strong>{{ dashboard.stats[3]?.value || '0.0' }}</strong>
+              <span>Average restaurant rating</span>
+            </div>
+          </div>
+        </article>
+
+        <div class="hero-side">
+          <article class="surface-card info-card">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">Approval Status</p>
+                <h2>Restaurant verification</h2>
+              </div>
+            </div>
+            <span [class]="approvalClass(dashboard.approvalStatus)">
+              {{ dashboard.approvalStatus === 'PENDING_APPROVAL' ? 'Pending Approval' : dashboard.approvalStatus === 'APPROVED' ? 'Approved' : 'Rejected' }}
+            </span>
+            <p class="section-helper approval-copy">{{ dashboard.approvalMessage }}</p>
+            <div class="empty-state" *ngIf="dashboard.approvalStatus === 'PENDING_APPROVAL'">
+              Your restaurant will be visible to customers after admin approval.
+            </div>
+          </article>
+
+          <article id="profile-summary" class="surface-card info-card">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">Restaurant Profile</p>
+                <h2>{{ dashboard.restaurantProfile.name }}</h2>
+              </div>
+              <span class="status-chip" [class.status-green]="isRestaurantOpen()" [class.status-slate]="!isRestaurantOpen()">
+                {{ isRestaurantOpen() ? 'Open' : 'Closed' }}
+              </span>
+            </div>
+
+            <div class="meta-list">
+              <div class="meta-row"><span>Cuisine</span><strong>{{ dashboard.restaurantProfile.cuisine }}</strong></div>
+              <div class="meta-row"><span>Address</span><strong>{{ dashboard.restaurantProfile.address }}</strong></div>
+              <div class="meta-row"><span>GPS / Location</span><strong>{{ dashboard.restaurantProfile.gps }}</strong></div>
+              <div class="meta-row"><span>Operating Hours</span><strong>{{ dashboard.restaurantProfile.operatingHours }}</strong></div>
+              <div class="meta-row"><span>Delivery Radius</span><strong>{{ dashboard.restaurantProfile.deliveryRadius }}</strong></div>
+              <div class="meta-row"><span>Minimum Order</span><strong>Rs. {{ dashboard.restaurantProfile.minimumOrderAmount }}</strong></div>
+              <div class="meta-row"><span>Prep Time</span><strong>{{ dashboard.restaurantProfile.estimatedPreparationTime }}</strong></div>
+            </div>
+
+            <button type="button" class="secondary-btn" (click)="toggleRestaurantStatus()" [disabled]="!dashboard.restaurantProfile.id || isUpdatingStatus()">
+              {{ isUpdatingStatus() ? 'Updating...' : (isRestaurantOpen() ? 'Switch To Closed' : 'Switch To Open') }}
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section surface-card action-strip">
+        <div class="section-header">
+          <div>
+            <p class="dashboard-kicker">Quick Actions</p>
+            <h2>Daily restaurant operations</h2>
+          </div>
+        </div>
+
+        <div class="quick-actions-grid">
+          <article class="quick-action-card surface-card-muted" *ngFor="let action of dashboard.quickActions">
+            <span class="action-icon">{{ action.icon }}</span>
+            <strong>{{ action.label }}</strong>
+            <p>{{ action.description }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section stats-grid owner-stats">
+        <article class="surface-card stat-card" *ngFor="let stat of dashboard.stats">
+          <div class="stat-card-top">
+            <div>
+              <span class="label">{{ stat.label }}</span>
+              <div class="value">{{ stat.value }}</div>
+            </div>
+            <span class="icon-badge" [ngClass]="stat.accent">{{ stat.icon }}</span>
+          </div>
+          <p class="helper">{{ stat.helper }}</p>
+        </article>
+      </section>
+
+      <section class="dashboard-section surface-card content-card">
+        <div class="section-header">
+          <div>
+            <p class="dashboard-kicker">Menu Management</p>
+            <h2>Categories and items</h2>
+            <p class="section-helper">Control pricing, discounts, and item availability without leaving the dashboard.</p>
+          </div>
+          <div class="card-actions">
+            <button type="button" class="secondary-btn">Create Category</button>
+            <button type="button" class="primary-btn">Add Menu Item</button>
+          </div>
+        </div>
+
+        <div class="menu-category" *ngFor="let category of dashboard.menuCategories">
+          <div class="menu-category-header">
+            <div>
+              <strong>{{ category.name }}</strong>
+              <p>{{ category.items.length }} items in this category</p>
+            </div>
+          </div>
+
+          <div class="menu-grid">
+            <article class="menu-item-card" *ngFor="let item of category.items">
+              <div class="menu-item-head">
+                <div>
+                  <strong>{{ item.name }}</strong>
+                  <p>{{ item.category }} • {{ item.prepTime }}</p>
+                </div>
+                <span class="status-chip" [class.status-green]="item.inStock" [class.status-slate]="!item.inStock">
+                  {{ item.inStock ? 'In Stock' : 'Out of Stock' }}
+                </span>
+              </div>
+
+              <div class="menu-price-row">
+                <span>Rs. {{ item.price }}</span>
+                <strong *ngIf="item.discountedPrice">Rs. {{ item.discountedPrice }}</strong>
+              </div>
+
+              <div class="menu-tags">
+                <span class="badge-chip">{{ item.type === 'VEG' ? 'Veg' : 'Non-Veg' }}</span>
+                <span class="badge-chip muted-chip">{{ item.discountedPrice ? 'Discount Active' : 'Standard Price' }}</span>
+              </div>
+
+              <div class="card-actions">
+                <button type="button" class="secondary-btn compact-btn">Edit Item</button>
+                <button type="button" class="ghost-btn compact-btn">Delete Item</button>
+                <button type="button" class="primary-btn compact-btn">{{ item.inStock ? 'Mark Out Of Stock' : 'Mark In Stock' }}</button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-section split-layout">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Incoming Orders</p>
+              <h2>Kitchen queue and handoff status</h2>
+            </div>
+            <span class="badge-chip">Order pipeline: New Order → Accepted → Preparing → Ready for Pickup</span>
+          </div>
+
+          <div class="alert-banner" *ngIf="dashboard.newOrderAlertsEnabled">
+            <strong>New order alert enabled</strong>
+            <p>Audio and visual notifications are active for every new order.</p>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.incomingOrders.length; else emptyOrders">
+            <article class="order-queue-card" *ngFor="let order of dashboard.incomingOrders">
+              <div class="queue-head">
+                <div>
+                  <strong>{{ order.id }}</strong>
+                  <p>{{ order.queueNote }}</p>
+                </div>
+                <span [class]="orderStatusClass(order.status)">{{ order.status }}</span>
+              </div>
+
+              <p class="queue-items">{{ order.items.join(', ') }}</p>
+
+              <div class="queue-footer">
+                <div>
+                  <span>Total Amount</span>
+                  <strong>Rs. {{ order.amount }}</strong>
+                </div>
+                <div class="card-actions">
+                  <button type="button" class="secondary-btn compact-btn">Accept Order</button>
+                  <button type="button" class="ghost-btn compact-btn">Reject Order</button>
+                  <button type="button" class="primary-btn compact-btn">Update Status</button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #emptyOrders>
+            <div class="empty-state">No incoming orders right now. The kitchen queue will appear here when new orders arrive.</div>
+          </ng-template>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Recent Activity</p>
+              <h2>Operational highlights</h2>
+            </div>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.recentActivity.length; else emptyActivity">
+            <article class="activity-row" *ngFor="let activity of dashboard.recentActivity">
+              <span class="activity-dot"></span>
+              <div>
+                <strong>{{ activity.title }}</strong>
+                <p>{{ activity.description }}</p>
+              </div>
+              <span class="activity-time">{{ activity.timeLabel }}</span>
+            </article>
+          </div>
+
+          <ng-template #emptyActivity>
+            <div class="empty-state">Recent kitchen, menu, and review events will appear here.</div>
+          </ng-template>
+        </article>
+      </section>
+
+      <section class="dashboard-section split-layout-even">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Analytics</p>
+              <h2>Revenue and performance snapshot</h2>
+            </div>
+          </div>
+
+          <div class="analytics-grid">
+            <article class="analytics-card" *ngFor="let item of dashboard.analytics">
+              <div class="analytics-head">
+                <div>
+                  <strong>{{ item.label }}</strong>
+                  <p>{{ item.helper }}</p>
+                </div>
+                <span>{{ item.value }}</span>
+              </div>
+              <div class="analytics-bar">
+                <span [style.width.%]="item.percentage"></span>
+              </div>
+            </article>
+          </div>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Reviews</p>
+              <h2>Customer feedback</h2>
+            </div>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.reviews.length; else emptyReviews">
+            <article class="review-card" *ngFor="let review of dashboard.reviews">
+              <div class="review-head">
+                <div>
+                  <strong>{{ review.authorName }}</strong>
+                  <p>{{ review.subject }} • {{ review.date }}</p>
+                </div>
+                <span class="badge-chip">★ {{ review.rating }}</span>
+              </div>
+              <p class="review-copy">{{ review.comment }}</p>
+              <button type="button" class="ghost-btn compact-btn">Flag Review</button>
+            </article>
+          </div>
+
+          <ng-template #emptyReviews>
+            <div class="empty-state">Customer reviews will appear here after order completions.</div>
+          </ng-template>
+        </article>
+      </section>
+    </main>
+  </div>
+</ng-container>

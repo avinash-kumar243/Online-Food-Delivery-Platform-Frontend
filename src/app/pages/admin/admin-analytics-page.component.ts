@@ -1,0 +1,187 @@
+import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
+import { LoaderComponent } from '../../components/shared/loader.component';
+import { DashboardStats, Order, Payment } from '../../models/app.models';
+import { AdminService } from '../../services/admin.service';
+import { getErrorMessage } from '../../services/api.utils';
+
+interface BreakdownItem {
+  label: string;
+  value: number;
+}
+
+@Component({
+  selector: 'app-admin-analytics-page',
+  standalone: true,
+  imports: [CommonModule, LoaderComponent],
+  template: `
+    <section class="section-header">
+      <div>
+        <span class="dashboard-kicker">Admin analytics</span>
+        <h1>Operational trends across orders, revenue, and payment flow.</h1>
+        <p class="dashboard-subtitle">This page derives analytics from the same live admin APIs used elsewhere in the dashboard.</p>
+      </div>
+      <button type="button" class="secondary-btn" (click)="load()">Refresh</button>
+    </section>
+
+    <app-loader *ngIf="loading()"></app-loader>
+    <section *ngIf="error()" class="empty-state">{{ error() }}</section>
+
+    <ng-container *ngIf="!loading() && !error()">
+      <section class="stats-grid dashboard-section" *ngIf="stats() as stats">
+        <article class="surface-card stat-card"><div class="value">{{ stats.totalOrders || 0 }}</div><p class="helper">Total orders</p></article>
+        <article class="surface-card stat-card"><div class="value">Rs {{ (stats.totalRevenue || 0).toFixed(2) }}</div><p class="helper">Collected revenue</p></article>
+        <article class="surface-card stat-card"><div class="value">{{ stats.pendingOrders || 0 }}</div><p class="helper">Orders in progress</p></article>
+        <article class="surface-card stat-card"><div class="value">{{ stats.completedOrders || 0 }}</div><p class="helper">Delivered orders</p></article>
+      </section>
+
+      <section class="split-layout dashboard-section">
+        <article class="surface-card panel-card">
+          <div class="panel-header">
+            <div>
+              <strong>Order status breakdown</strong>
+              <span>{{ orders().length }} orders</span>
+            </div>
+          </div>
+          <div class="chart-stack">
+            <div *ngFor="let item of orderBreakdown()" class="chart-row">
+              <div class="chart-copy">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+              <div class="chart-track">
+                <div class="chart-fill" [style.width.%]="orderWidth(item.value)"></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="surface-card panel-card">
+          <div class="panel-header">
+            <div>
+              <strong>Payment mode breakdown</strong>
+              <span>{{ payments().length }} payments</span>
+            </div>
+          </div>
+          <div class="chart-stack">
+            <div *ngFor="let item of paymentModeBreakdown()" class="chart-row">
+              <div class="chart-copy">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+              <div class="chart-track amber">
+                <div class="chart-fill amber" [style.width.%]="paymentWidth(item.value)"></div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+  `,
+  styles: [`
+    .panel-card {
+      padding: 22px;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      color: var(--qb-text-muted);
+    }
+    .chart-stack {
+      display: grid;
+      gap: 14px;
+    }
+    .chart-row {
+      display: grid;
+      gap: 10px;
+    }
+    .chart-copy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.92rem;
+    }
+    .chart-track {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(15, 122, 95, 0.1);
+      overflow: hidden;
+    }
+    .chart-track.amber {
+      background: rgba(245, 158, 11, 0.12);
+    }
+    .chart-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(135deg, var(--qb-primary), #11936f);
+    }
+    .chart-fill.amber {
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class AdminAnalyticsPageComponent {
+  private readonly adminService = inject(AdminService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly stats = signal<DashboardStats | null>(null);
+  readonly orders = signal<Order[]>([]);
+  readonly payments = signal<Payment[]>([]);
+  readonly orderBreakdown = signal<BreakdownItem[]>([]);
+  readonly paymentModeBreakdown = signal<BreakdownItem[]>([]);
+  readonly maxOrderValue = computed(() => Math.max(...this.orderBreakdown().map((item) => item.value), 1));
+  readonly maxPaymentValue = computed(() => Math.max(...this.paymentModeBreakdown().map((item) => item.value), 1));
+
+  constructor() {
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.error.set('');
+
+    forkJoin({
+      stats: this.adminService.getDashboardStats(),
+      orders: this.adminService.getAllOrders(),
+      payments: this.adminService.getAllPayments()
+    }).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ stats, orders, payments }) => {
+          this.stats.set(stats);
+          this.orders.set(orders);
+          this.payments.set(payments);
+          this.orderBreakdown.set(this.buildBreakdown(orders.map((order) => order.orderStatus)));
+          this.paymentModeBreakdown.set(this.buildBreakdown(payments.map((payment) => payment.mode)));
+          this.loading.set(false);
+        },
+        error: (error) => {
+          this.error.set(getErrorMessage(error));
+          this.loading.set(false);
+        }
+      });
+  }
+
+  orderWidth(value: number): number {
+    return (value / this.maxOrderValue()) * 100;
+  }
+
+  paymentWidth(value: number): number {
+    return (value / this.maxPaymentValue()) * 100;
+  }
+
+  private buildBreakdown(values: string[]): BreakdownItem[] {
+    const counts = new Map<string, number>();
+    values.forEach((value) => counts.set(value, (counts.get(value) ?? 0) + 1));
+    return Array.from(counts.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((left, right) => right.value - left.value);
+  }
+}
