@@ -1,9 +1,9 @@
 import { Component, ChangeDetectorRef, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../../services/auth.service';
 import { Router, ActivatedRoute } from '@angular/router';  // Used to navigate from one page to another.
 import { finalize } from 'rxjs/operators';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-customer-auth',
@@ -40,6 +40,7 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
 
+
   authData = {
     fullName: '',
     email: '',
@@ -72,9 +73,9 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
         }, 1000);
       }
     });
-  }
+  }   // ngOnInit() runs after the component is created
 
-  ngOnDestroy(): void {
+  ngOnDestroy(): void {    // ngOnDestroy() runs before the component is removed/destroyed.
     this.stopOtpTimer();
     this.stopResendCooldown();
   }
