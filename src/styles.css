@@ -35,7 +35,7 @@ html {
 
 body {
   margin: 0;
-  font-family: Inter, "Segoe UI", sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: var(--qb-text);
   background:
     radial-gradient(circle at top left, rgba(15, 122, 95, 0.16), transparent 28rem),
@@ -63,7 +63,7 @@ h4,
 h5,
 h6 {
   margin: 0;
-  font-family: Inter, "Segoe UI", sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: var(--qb-text);
   letter-spacing: 0;
 }
