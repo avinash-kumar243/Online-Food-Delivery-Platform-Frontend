@@ -290,7 +290,7 @@
 
 .cart-total {
   color: var(--qb-primary);
-  font-family: 'Poppins', sans-serif;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   font-size: 2rem;
   font-weight: 700;
 }
