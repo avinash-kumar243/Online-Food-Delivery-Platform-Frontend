@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
 import { AuthResponse, CurrentUser, MessageResponse, OtpResponse, UserRole } from '../models/auth.models';
 import { DASHBOARD_ROUTE_BY_ROLE } from '../models/dashboard.model';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: 'root' }) // Angular will create one single object of this service for the whole application.
 export class AuthService {
   private static readonly TOKEN_KEY = 'token';
   private static readonly ROLE_KEY = 'userRole';
@@ -30,7 +30,7 @@ export class AuthService {
       }),
       catchError((error: any) => {
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -41,7 +41,7 @@ export class AuthService {
       }),
       catchError((error: any) => {
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -50,36 +50,50 @@ export class AuthService {
   }
 
   handleGoogleToken(token: string, userType?: string, userId?: number | null): void {
-    const role = this.normalizeRole(userType) ?? this.normalizeRole(this.storage.getItem(AuthService.ROLE_KEY)) ?? this.getRoleFromToken(token);
+    const role =
+      this.normalizeRole(userType) ??
+      this.normalizeRole(this.storage.getItem(AuthService.ROLE_KEY)) ??
+      this.getRoleFromToken(token);
     this.persistSession(token, role ?? 'CUSTOMER', undefined, userId ?? undefined);
   }
 
   forgotPassword(rolePath: string, email: string): Observable<OtpResponse> {
-    return this.http.post<OtpResponse>(`${this.apiUrl}/${rolePath}/forget-password`, { email }).pipe(
-      catchError((error: any) => {
-        return throwError(() => error);
-      })
-    );
+    return this.http
+      .post<OtpResponse>(`${this.apiUrl}/${rolePath}/forget-password`, { email })
+      .pipe(
+        catchError((error: any) => {
+          return throwError(() => error);
+        }),
+      );
   }
 
   verifyOtp(rolePath: string, email: string, otp: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.apiUrl}/${rolePath}/verify-otp`, { email, otp }).pipe(
-      catchError((error: any) => {
-        return throwError(() => error);
-      })
-    );
+    return this.http
+      .post<MessageResponse>(`${this.apiUrl}/${rolePath}/verify-otp`, { email, otp })
+      .pipe(
+        catchError((error: any) => {
+          return throwError(() => error);
+        }),
+      );
   }
 
-  resetPassword(rolePath: string, email: string, newPassword: string, confirmPassword: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.apiUrl}/${rolePath}/reset-password`, {
-      email,
-      newPassword,
-      confirmPassword
-    }).pipe(
-      catchError((error: any) => {
-        return throwError(() => error);
+  resetPassword(
+    rolePath: string,
+    email: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Observable<MessageResponse> {
+    return this.http
+      .post<MessageResponse>(`${this.apiUrl}/${rolePath}/reset-password`, {
+        email,
+        newPassword,
+        confirmPassword,
       })
-    );
+      .pipe(
+        catchError((error: any) => {
+          return throwError(() => error);
+        }),
+      );
   }
 
   logout() {
@@ -92,7 +106,11 @@ export class AuthService {
       this.router.navigate(['/welcome']);
     } else if (userRole === 'RESTAURANT_OWNER' || userRole === 'restaurant') {
       this.router.navigate(['/restaurant/auth']);
-    } else if (userRole === 'DELIVERY_PARTNER' || userRole === 'DELIVERY_AGENT' || userRole === 'delivery-partner') {
+    } else if (
+      userRole === 'DELIVERY_PARTNER' ||
+      userRole === 'DELIVERY_AGENT' ||
+      userRole === 'delivery-partner'
+    ) {
       this.router.navigate(['/delivery-partner/auth']);
     } else {
       this.router.navigate(['/customer/auth']);
@@ -135,12 +153,29 @@ export class AuthService {
       return;
     }
 
-    const role = this.normalizeRole(response.role ?? response.userRole ?? response.userType) ?? fallbackRole;
-    const id = response.id ?? response.userId ?? response.customerId ?? response.ownerId ?? response.partnerId;
-    this.persistSession(response.token.trim(), role, response.email, id, response.fullName, response.profilePicUrl);
+    const role =
+      this.normalizeRole(response.role ?? response.userRole ?? response.userType) ?? fallbackRole;
+    const id =
+      response.id ??
+      response.userId ??
+      response.customerId ??
+      response.ownerId ??
+      response.partnerId;
+    this.persistSession(
+      response.token.trim(),
+      role,
+      response.email,
+      id,
+      response.fullName,
+      response.profilePicUrl,
+    );
   }
 
-  updateCurrentUserProfile(profile: { email?: string | null; fullName?: string | null; profilePicUrl?: string | null }): void {
+  updateCurrentUserProfile(profile: {
+    email?: string | null;
+    fullName?: string | null;
+    profilePicUrl?: string | null;
+  }): void {
     const currentUser = this.resolveCurrentUser();
     if (!currentUser) {
       return;
@@ -153,10 +188,10 @@ export class AuthService {
     this.persistSession(
       currentUser.token,
       currentUser.role,
-      hasEmail ? profile.email ?? undefined : currentUser.email ?? undefined,
+      hasEmail ? (profile.email ?? undefined) : (currentUser.email ?? undefined),
       currentUser.id ?? undefined,
-      hasFullName ? profile.fullName ?? undefined : currentUser.fullName ?? undefined,
-      hasProfilePic ? profile.profilePicUrl ?? null : currentUser.profilePicUrl ?? undefined
+      hasFullName ? (profile.fullName ?? undefined) : (currentUser.fullName ?? undefined),
+      hasProfilePic ? (profile.profilePicUrl ?? null) : (currentUser.profilePicUrl ?? undefined),
     );
   }
 
@@ -166,7 +201,7 @@ export class AuthService {
     email?: string,
     id?: number,
     fullName?: string | null,
-    profilePicUrl?: string | null
+    profilePicUrl?: string | null,
   ): void {
     this.storage.setItem(AuthService.TOKEN_KEY, token.trim());
     this.storage.setItem(AuthService.ROLE_KEY, role);
@@ -204,7 +239,9 @@ export class AuthService {
       return null;
     }
 
-    const role = this.normalizeRole(this.storage.getItem(AuthService.ROLE_KEY)) ?? this.getRoleFromToken(token);
+    const role =
+      this.normalizeRole(this.storage.getItem(AuthService.ROLE_KEY)) ??
+      this.getRoleFromToken(token);
     if (!role) {
       return null;
     }
@@ -218,7 +255,7 @@ export class AuthService {
       email: this.storage.getItem(AuthService.EMAIL_KEY) ?? this.getEmailFromToken(token),
       id: Number.isFinite(parsedId) ? parsedId : null,
       fullName: this.storage.getItem(AuthService.FULL_NAME_KEY),
-      profilePicUrl: this.storage.getItem(AuthService.PROFILE_PIC_KEY)
+      profilePicUrl: this.storage.getItem(AuthService.PROFILE_PIC_KEY),
     };
   }
 
@@ -296,15 +333,18 @@ export class AuthService {
     if (normalized === 'ADMIN') return 'ADMIN';
     if (normalized === 'CUSTOMER') return 'CUSTOMER';
     if (normalized === 'RESTAURANT' || normalized === 'RESTAURANT_OWNER') return 'RESTAURANT_OWNER';
-    if (normalized === 'DELIVERY_AGENT' || normalized === 'DELIVERY_PARTNER') return 'DELIVERY_PARTNER';
+    if (normalized === 'DELIVERY_AGENT' || normalized === 'DELIVERY_PARTNER')
+      return 'DELIVERY_PARTNER';
     return null;
   }
 
   private getRoleFromToken(token: string): UserRole | null {
     const payload = this.decodeJwtPayload(token);
-    return this.normalizeRole(payload?.['role'] as string | undefined)
-      ?? this.normalizeRole(payload?.['userRole'] as string | undefined)
-      ?? this.normalizeRole(payload?.['userType'] as string | undefined);
+    return (
+      this.normalizeRole(payload?.['role'] as string | undefined) ??
+      this.normalizeRole(payload?.['userRole'] as string | undefined) ??
+      this.normalizeRole(payload?.['userType'] as string | undefined)
+    );
   }
 
   private getEmailFromToken(token: string): string | null {
@@ -315,7 +355,12 @@ export class AuthService {
 
   private getIdFromToken(token: string): number | null {
     const payload = this.decodeJwtPayload(token);
-    const id = payload?.['id'] ?? payload?.['userId'] ?? payload?.['customerId'] ?? payload?.['ownerId'] ?? payload?.['partnerId'];
+    const id =
+      payload?.['id'] ??
+      payload?.['userId'] ??
+      payload?.['customerId'] ??
+      payload?.['ownerId'] ??
+      payload?.['partnerId'];
     const parsed = Number(id);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -335,7 +380,7 @@ export class AuthService {
         atob(base64)
           .split('')
           .map((char) => `%${`00${char.charCodeAt(0).toString(16)}`.slice(-2)}`)
-          .join('')
+          .join(''),
       );
       return JSON.parse(json) as Record<string, unknown>;
     } catch {
