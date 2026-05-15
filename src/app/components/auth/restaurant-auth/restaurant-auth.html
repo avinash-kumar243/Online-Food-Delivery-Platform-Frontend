@@ -1,0 +1,223 @@
+<section class="auth-page">
+  <div class="auth-panel">
+    <aside class="auth-aside">
+      <span class="dashboard-kicker">{{ currentRoleLabel }} access</span>
+      <h1>{{ isLoginMode ? 'Welcome back to QuickBite.' : 'Create your QuickBite account.' }}</h1>
+      <p>
+        Secure sign-in, password recovery, and role-based routing stay connected to the existing QuickBite auth flows.
+      </p>
+
+      <div class="auth-points">
+        <article>
+          <strong>Live backend integration</strong>
+          <span>Authentication calls continue to use the current auth-service APIs.</span>
+        </article>
+        <article>
+          <strong>Responsive account flow</strong>
+          <span>Login, signup, OTP verification, and password reset fit cleanly on mobile and desktop.</span>
+        </article>
+      </div>
+    </aside>
+
+    <div class="auth-card">
+      <div class="role-badge">{{ currentRoleLabel }} Portal</div>
+
+      <div class="choose-option">
+        <button type="button" [class.active]="isLoginMode" (click)="toggleMode()">Login</button>
+        <button type="button" [class.active]="!isLoginMode" (click)="toggleMode()">Signup</button>
+      </div>
+
+      <form (ngSubmit)="onSubmit()" autocomplete="off">
+        <div class="field-grid" [class.signup-grid]="!isLoginMode">
+          <div class="f-group" *ngIf="!isLoginMode">
+            <label>Full Name</label>
+            <input
+              type="text"
+              [(ngModel)]="authData.fullName"
+              name="fullName"
+              required
+              (input)="clearMessages()">
+          </div>
+
+          <div class="f-group">
+            <label>Email</label>
+            <input
+              type="email"
+              [(ngModel)]="authData.email"
+              name="email"
+              required
+              (input)="clearMessages()">
+          </div>
+
+          <div class="f-group" *ngIf="!isLoginMode">
+            <label>Phone Number</label>
+            <input
+              type="text"
+              [(ngModel)]="authData.phone"
+              name="phone"
+              maxlength="10"
+              required
+              (input)="clearMessages()">
+          </div>
+
+          <div class="f-group">
+            <label>Password</label>
+            <input
+              type="password"
+              [(ngModel)]="authData.password"
+              name="password"
+              required
+              (input)="clearMessages()">
+          </div>
+
+          <div class="f-group" *ngIf="!isLoginMode">
+            <label>Confirm Password</label>
+            <input
+              type="password"
+              [(ngModel)]="authData.confirmPassword"
+              name="confirmPassword"
+              required
+              (input)="clearMessages()">
+          </div>
+        </div>
+
+        <div class="forgot-password-row" *ngIf="isLoginMode">
+          <button type="button" class="forgot-password-btn" (click)="openForgotPasswordModal()">
+            Forgot password?
+          </button>
+        </div>
+
+        <div *ngIf="errorMessage" class="error-alert">{{ errorMessage }}</div>
+        <div *ngIf="successMessage" class="success-alert">{{ successMessage }}</div>
+
+        <button type="submit" class="submit-btn" [disabled]="isSubmittingAuth">
+          {{ isSubmittingAuth ? 'Please wait...' : isLoginMode ? 'Login' : 'Create Account' }}
+        </button>
+      </form>
+
+      <div class="divider">
+        <span>Or continue with</span>
+      </div>
+
+      <button type="button" class="google-btn" (click)="loginWithGoogle()" [disabled]="isSubmittingAuth">
+        <img src="/google-icon.png" alt="Google" class="google-icon-img">
+        <span>Google</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<div class="modal-overlay" *ngIf="forgotPasswordModalOpen">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <span class="dashboard-kicker">Password recovery</span>
+        <h2>Reset Password</h2>
+      </div>
+      <button type="button" class="close-btn" (click)="closeForgotPasswordModal()">x</button>
+    </div>
+
+    <div *ngIf="errorMessage" class="error-alert">{{ errorMessage }}</div>
+    <div *ngIf="successMessage" class="success-alert">{{ successMessage }}</div>
+
+    <div *ngIf="forgotStep === 'email'" class="modal-stack">
+      <div class="f-group">
+        <label>Email</label>
+        <input
+          type="email"
+          [(ngModel)]="forgotPasswordData.email"
+          name="forgotEmail"
+          (input)="clearMessages()">
+      </div>
+
+      <button
+        type="button"
+        class="submit-btn"
+        (click)="sendOtp()"
+        [disabled]="isSendingOtp || resendCooldown > 0">
+        {{
+          isSendingOtp
+            ? 'Sending OTP...'
+            : resendCooldown > 0
+              ? 'Wait ' + resendCooldown + 's'
+              : 'Send OTP'
+        }}
+      </button>
+    </div>
+
+    <div *ngIf="forgotStep === 'otp'" class="modal-stack">
+      <div class="f-group">
+        <label>Email</label>
+        <input
+          type="email"
+          [(ngModel)]="forgotPasswordData.email"
+          name="verifyEmail"
+          readonly>
+      </div>
+
+      <div class="f-group">
+        <label>OTP</label>
+        <input
+          type="text"
+          [(ngModel)]="forgotPasswordData.otp"
+          name="otp"
+          maxlength="6"
+          (input)="clearMessages()">
+      </div>
+
+      <p class="otp-timer">OTP expires in {{ otpTimer }} seconds</p>
+
+      <button
+        type="button"
+        class="submit-btn"
+        (click)="verifyOtp()"
+        [disabled]="isVerifyingOtp">
+        {{ isVerifyingOtp ? 'Verifying OTP...' : 'Verify OTP' }}
+      </button>
+
+      <div class="resend-row">
+        <button
+          type="button"
+          class="resend-link-btn"
+          (click)="resendOtp()"
+          [disabled]="isSendingOtp || resendCooldown > 0">
+          {{
+            isSendingOtp
+              ? 'Sending OTP...'
+              : resendCooldown > 0
+                ? 'Resend in ' + resendCooldown + 's'
+                : 'Resend OTP'
+          }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="forgotStep === 'reset'" class="modal-stack">
+      <div class="f-group">
+        <label>New Password</label>
+        <input
+          type="password"
+          [(ngModel)]="forgotPasswordData.password"
+          name="newPassword"
+          (input)="clearMessages()">
+      </div>
+
+      <div class="f-group">
+        <label>Confirm Password</label>
+        <input
+          type="password"
+          [(ngModel)]="forgotPasswordData.confirmPassword"
+          name="newConfirmPassword"
+          (input)="clearMessages()">
+      </div>
+
+      <button
+        type="button"
+        class="submit-btn"
+        (click)="submitNewPassword()"
+        [disabled]="isResettingPassword">
+        {{ isResettingPassword ? 'Saving Password...' : 'Save Password' }}
+      </button>
+    </div>
+  </div>
+</div>

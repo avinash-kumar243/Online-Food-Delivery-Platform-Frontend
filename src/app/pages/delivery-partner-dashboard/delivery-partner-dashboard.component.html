@@ -1,0 +1,319 @@
+<ng-container *ngIf="dashboard$ | async as dashboard">
+  <div class="dashboard-page">
+    <app-dashboard-header [user]="dashboard.user"></app-dashboard-header>
+
+    <main class="dashboard-main">
+      <section class="hero-grid">
+        <article class="surface-card hero-card">
+          <p class="dashboard-kicker">Delivery Partner Dashboard</p>
+          <h1>Welcome, Delivery Partner</h1>
+          <p class="dashboard-subtitle">
+            Manage your availability, deliveries, navigation, and earnings.
+          </p>
+
+          <div class="hero-actions">
+            <button type="button" class="primary-btn" (click)="toggleAvailability()" [disabled]="isUpdatingAvailability()">
+              {{ isUpdatingAvailability() ? 'Updating...' : (isOnline() ? 'Go Offline' : 'Go Online') }}
+            </button>
+            <button type="button" class="secondary-btn">View Assigned Orders</button>
+          </div>
+
+          <div class="hero-strip">
+            <div>
+              <strong>{{ dashboard.assignments.length }}</strong>
+              <span>Active assignments</span>
+            </div>
+            <div>
+              <strong>{{ dashboard.profileSummary.rating | number:'1.1-1' }}</strong>
+              <span>Customer delivery rating</span>
+            </div>
+          </div>
+        </article>
+
+        <div class="hero-side">
+          <article class="surface-card info-card">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">Verification Status</p>
+                <h2>Account readiness</h2>
+              </div>
+            </div>
+
+            <span [class]="verificationClass(dashboard.verificationStatus)">
+              {{ dashboard.verificationStatus === 'PENDING_VERIFICATION' ? 'Pending Verification' : dashboard.verificationStatus === 'VERIFIED' ? 'Verified' : 'Rejected' }}
+            </span>
+            <p class="section-helper status-copy">{{ dashboard.verificationMessage }}</p>
+
+            <div class="empty-state" *ngIf="dashboard.verificationStatus === 'PENDING_VERIFICATION'">
+              You can receive delivery assignments after admin verification.
+            </div>
+          </article>
+
+          <article class="surface-card info-card">
+            <div class="section-header">
+              <div>
+                <p class="dashboard-kicker">Availability</p>
+                <h2>{{ isOnline() ? 'Online' : 'Offline' }}</h2>
+              </div>
+              <span class="status-chip" [class.status-green]="isOnline()" [class.status-slate]="!isOnline()">
+                {{ isOnline() ? 'Online' : 'Offline' }}
+              </span>
+            </div>
+
+            <p class="section-helper">Go online to start receiving delivery orders.</p>
+
+            <button type="button" class="availability-toggle" [class.online]="isOnline()" (click)="toggleAvailability()" [disabled]="isUpdatingAvailability()">
+              <span></span>
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-section surface-card action-strip">
+        <div class="section-header">
+          <div>
+            <p class="dashboard-kicker">Quick Actions</p>
+            <h2>On-road controls</h2>
+          </div>
+        </div>
+
+        <div class="quick-actions-grid">
+          <article class="quick-action-card surface-card-muted" *ngFor="let action of dashboard.quickActions">
+            <span class="action-icon">{{ action.icon }}</span>
+            <strong>{{ action.label }}</strong>
+            <p>{{ action.description }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="profile-summary" class="dashboard-section split-layout">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Profile Summary</p>
+              <h2>{{ dashboard.profileSummary.fullName }}</h2>
+            </div>
+          </div>
+
+          <div class="meta-list">
+            <div class="meta-row"><span>Phone Number</span><strong>{{ dashboard.profileSummary.phone }}</strong></div>
+            <div class="meta-row"><span>Vehicle Type</span><strong>{{ dashboard.profileSummary.vehicleType }}</strong></div>
+            <div class="meta-row"><span>Vehicle Registration</span><strong>{{ dashboard.profileSummary.vehicleRegistrationNumber }}</strong></div>
+            <div class="meta-row"><span>Current Location</span><strong>{{ dashboard.profileSummary.locationStatus }}</strong></div>
+            <div class="meta-row"><span>Rating</span><strong>{{ dashboard.profileSummary.rating }}</strong></div>
+            <div class="meta-row"><span>Total Deliveries</span><strong>{{ dashboard.profileSummary.totalDeliveries }}</strong></div>
+          </div>
+        </article>
+
+        <section class="stats-grid">
+          <article class="surface-card stat-card" *ngFor="let stat of dashboard.stats">
+            <div class="stat-card-top">
+              <div>
+                <span class="label">{{ stat.label }}</span>
+                <div class="value">{{ stat.value }}</div>
+              </div>
+              <span class="icon-badge" [ngClass]="stat.accent">{{ stat.icon }}</span>
+            </div>
+            <p class="helper">{{ stat.helper }}</p>
+          </article>
+        </section>
+      </section>
+
+      <section class="dashboard-section split-layout">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Assigned Orders</p>
+              <h2>Current delivery assignments</h2>
+            </div>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.assignments.length; else emptyAssignments">
+            <article class="assignment-card" *ngFor="let assignment of dashboard.assignments">
+              <div class="assignment-head">
+                <div>
+                  <strong>{{ assignment.id }} • {{ assignment.restaurantName }}</strong>
+                  <p>{{ assignment.customerName }} • {{ assignment.paymentMode }}</p>
+                </div>
+                <span [class]="assignmentClass(assignment.status)">{{ assignment.status }}</span>
+              </div>
+
+              <div class="assignment-grid">
+                <div>
+                  <span>Pickup Address</span>
+                  <strong>{{ assignment.pickupAddress }}</strong>
+                </div>
+                <div>
+                  <span>Drop-off Address</span>
+                  <strong>{{ assignment.dropoffAddress }}</strong>
+                </div>
+                <div>
+                  <span>Estimated Distance</span>
+                  <strong>{{ assignment.estimatedDistance }}</strong>
+                </div>
+                <div>
+                  <span>Delivery Fee</span>
+                  <strong>Rs. {{ assignment.fee }}</strong>
+                </div>
+              </div>
+
+              <div class="assignment-footer">
+                <p>{{ assignment.routeNote }}</p>
+                <button type="button" class="primary-btn compact-btn">View Route</button>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #emptyAssignments>
+            <div class="empty-state">Assigned deliveries will show here as soon as dispatch matches an order to you.</div>
+          </ng-template>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Delivery Execution</p>
+              <h2>Status pipeline</h2>
+            </div>
+          </div>
+
+          <ng-container *ngIf="dashboard.assignments.length; else emptyExecution">
+            <div class="delivery-pipeline">
+              <div
+                class="delivery-step"
+                *ngFor="let step of dashboard.assignments[0].steps"
+                [class.completed]="step.completed"
+                [class.active]="step.active">
+                <span class="step-dot"></span>
+                <strong>{{ step.label }}</strong>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <button type="button" class="secondary-btn">Picked Up</button>
+              <button type="button" class="ghost-btn">On The Way</button>
+              <button type="button" class="primary-btn">Delivered</button>
+            </div>
+          </ng-container>
+
+          <ng-template #emptyExecution>
+            <div class="empty-state">Pickup and drop-off status controls will appear after you accept an assignment.</div>
+          </ng-template>
+        </article>
+      </section>
+
+      <section class="dashboard-section split-layout-even">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Navigation</p>
+              <h2>Pickup to drop-off route</h2>
+            </div>
+          </div>
+
+          <div class="map-placeholder">
+            <div class="map-overlay">
+              <strong>{{ dashboard.navigation.pickupLocation }}</strong>
+              <span>Pickup location</span>
+            </div>
+            <div class="map-overlay end">
+              <strong>{{ dashboard.navigation.dropoffLocation }}</strong>
+              <span>Drop-off location</span>
+            </div>
+          </div>
+
+          <p class="section-helper nav-copy">{{ dashboard.navigation.liveSyncText }}</p>
+          <button type="button" class="primary-btn">Open Navigation</button>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Earnings</p>
+              <h2>Payout overview</h2>
+            </div>
+          </div>
+
+          <div class="earnings-summary">
+            <div>
+              <span>Total Earnings</span>
+              <strong>Rs. {{ dashboard.earnings.total }}</strong>
+            </div>
+            <div>
+              <span>Today's Earnings</span>
+              <strong>Rs. {{ dashboard.earnings.today }}</strong>
+            </div>
+            <div>
+              <span>Weekly Earnings</span>
+              <strong>Rs. {{ dashboard.earnings.weekly }}</strong>
+            </div>
+          </div>
+
+          <div class="stack-list">
+            <article class="earning-row" *ngFor="let fee of dashboard.earnings.fees">
+              <div>
+                <strong>{{ fee.label }}</strong>
+                <p>{{ fee.deliveries }} deliveries</p>
+              </div>
+              <strong>Rs. {{ fee.amount }}</strong>
+            </article>
+          </div>
+
+          <button type="button" class="secondary-btn">View Earnings History</button>
+        </article>
+      </section>
+
+      <section class="dashboard-section split-layout-even">
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Ratings</p>
+              <h2>Customer delivery feedback</h2>
+            </div>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.ratings.length; else emptyRatings">
+            <article class="rating-card" *ngFor="let rating of dashboard.ratings">
+              <div class="rating-head">
+                <div>
+                  <strong>{{ rating.authorName }}</strong>
+                  <p>{{ rating.subject }} • {{ rating.date }}</p>
+                </div>
+                <span class="badge-chip">★ {{ rating.rating }}</span>
+              </div>
+              <p>{{ rating.comment }}</p>
+            </article>
+          </div>
+
+          <ng-template #emptyRatings>
+            <div class="empty-state">Customer delivery ratings will appear here once completed orders are reviewed.</div>
+          </ng-template>
+        </article>
+
+        <article class="surface-card content-card">
+          <div class="section-header">
+            <div>
+              <p class="dashboard-kicker">Recent Activity</p>
+              <h2>Partner timeline</h2>
+            </div>
+          </div>
+
+          <div class="stack-list" *ngIf="dashboard.recentActivity.length; else emptyActivity">
+            <article class="activity-row" *ngFor="let activity of dashboard.recentActivity">
+              <span class="activity-dot"></span>
+              <div>
+                <strong>{{ activity.title }}</strong>
+                <p>{{ activity.description }}</p>
+              </div>
+              <span class="activity-time">{{ activity.timeLabel }}</span>
+            </article>
+          </div>
+
+          <ng-template #emptyActivity>
+            <div class="empty-state">Availability changes and route updates will appear here.</div>
+          </ng-template>
+        </article>
+      </section>
+    </main>
+  </div>
+</ng-container>

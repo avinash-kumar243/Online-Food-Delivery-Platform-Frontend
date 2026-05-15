@@ -1,0 +1,51 @@
+<div class="dashboard-header-wrap">
+  <header class="dashboard-header surface-card">
+    <a class="brand" routerLink="/welcome">
+      <span class="brand-mark">QuickBite</span>
+      <span class="brand-role">{{ user.roleLabel }}</span>
+    </a>
+
+    <div class="header-actions">
+      <button type="button" class="icon-button" aria-label="Notifications">
+        <span class="icon-glyph">🔔</span>
+        <span class="notification-dot" *ngIf="notificationCount > 0">{{ notificationCount }}</span>
+      </button>
+
+      <div class="profile-wrap">
+        <button type="button" class="profile-button" (click)="toggleProfileMenu($event)" aria-label="Profile menu">
+          <span class="profile-copy">
+            <small>{{ user.roleLabel }}</small>
+            <strong>{{ user.fullName }}</strong>
+          </span>
+          <span class="avatar">{{ user.avatarInitials }}</span>
+        </button>
+
+        <div class="profile-dropdown surface-card" *ngIf="isProfileOpen()">
+          <div class="profile-dropdown-header">
+            <span class="avatar large">{{ user.avatarInitials }}</span>
+            <div>
+              <strong>{{ user.fullName }}</strong>
+              <p>{{ user.email }}</p>
+            </div>
+          </div>
+
+          <div class="profile-meta">
+            <div>
+              <span>Role</span>
+              <strong>{{ user.roleLabel }}</strong>
+            </div>
+            <div>
+              <span>Email</span>
+              <strong>{{ user.email }}</strong>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <button type="button" class="secondary-btn" (click)="goToProfile()">View Profile</button>
+            <button type="button" class="primary-btn" (click)="logout()">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+</div>
