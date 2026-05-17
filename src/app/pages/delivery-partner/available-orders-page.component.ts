@@ -2,18 +2,21 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { DeliveryPartner, Order } from '../../models/app.models';
+import { AccountStatusService } from '../../services/account-status.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
+import { ProfileService } from '../../services/profile.service';
 import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-available-orders-page',
   standalone: true,
-  imports: [CommonModule, LoaderComponent],
+  imports: [CommonModule, LoaderComponent, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -24,6 +27,11 @@ import { RealtimeService } from '../../services/realtime.service';
 
     <app-loader *ngIf="loading()"></app-loader>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
+    <app-suspension-banner
+      *ngIf="partnerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
     <section *ngIf="!loading() && profile() && (!profile()?.isVerified || !profile()?.isOnline)" class="empty-state">
       You must be verified and online before ready-for-pickup orders become available.
     </section>
@@ -34,7 +42,7 @@ import { RealtimeService } from '../../services/realtime.service';
           <strong>Order #{{ order.orderId }}</strong>
           <p>{{ order.deliveryAddress }} - {{ order.orderStatus }}</p>
         </div>
-        <button type="button" class="primary-btn" (click)="accept(order)">Accept order</button>
+        <button type="button" class="primary-btn" [disabled]="partnerSuspended()" (click)="accept(order)">Accept order</button>
       </article>
     </section>
 
@@ -58,14 +66,17 @@ export class AvailableOrdersPageComponent {
   private readonly authService = inject(AuthService);
   private readonly deliveryPartnerService = inject(DeliveryPartnerService);
   private readonly orderService = inject(OrderService);
+  private readonly profileService = inject(ProfileService);
   private readonly notificationService = inject(NotificationService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly profile = signal<DeliveryPartner | null>(null);
   readonly orders = signal<Order[]>([]);
   readonly error = signal('');
+  readonly partnerSuspended = signal(false);
 
   constructor() {
     this.load();
@@ -83,6 +94,13 @@ export class AvailableOrdersPageComponent {
     }
 
     this.loading.set(true);
+    this.profileService.getDeliveryPartnerProfile(userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.partnerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
+      });
+
     this.deliveryPartnerService.getMyDeliveryProfile(userId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -116,6 +134,10 @@ export class AvailableOrdersPageComponent {
   }
 
   accept(order: Order): void {
+    if (this.partnerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     const agentId = this.profile()?.agentId;
     if (!agentId) {
       this.notificationService.error('Unable to resolve delivery agent profile.');
@@ -142,6 +164,9 @@ export class AvailableOrdersPageComponent {
   }
 
   private reloadAvailableOrders(): void {
+    if (this.partnerSuspended()) {
+      return;
+    }
     const profile = this.profile();
     if (!profile?.isVerified || !profile?.isOnline) {
       return;
