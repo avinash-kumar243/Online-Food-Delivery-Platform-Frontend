@@ -813,10 +813,15 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
     @media (max-width: 720px) {
       .topbar {
         padding-inline: 14px;
+        align-items: flex-start;
       }
 
       .topbar p {
         display: none;
+      }
+
+      .topbar-actions {
+        gap: 8px;
       }
 
       .content {
@@ -844,10 +849,12 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
     @media (max-width: 540px) {
       .topbar {
         gap: 10px;
+        flex-wrap: wrap;
       }
 
       .brand-block {
         gap: 10px;
+        min-width: 0;
       }
 
       .sidebar-head {
@@ -862,6 +869,15 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
 
       .brand-block strong {
         font-size: 0.98rem;
+      }
+
+      .topbar-start,
+      .topbar-actions {
+        width: 100%;
+      }
+
+      .topbar-actions {
+        justify-content: flex-end;
       }
 
       .brand {
