@@ -32,9 +32,18 @@ import { RealtimeService } from '../../services/realtime.service';
     <section class="stack-list dashboard-section" *ngIf="!loading() && !error() && orders().length; else noOrders">
       <article *ngFor="let order of orders()" class="surface-card order-card">
         <div class="order-body">
-          <div>
+          <div class="order-copy">
             <strong>Order #{{ order.orderId }}</strong>
             <p>{{ order.items.length }} items | {{ order.deliveryAddress }}</p>
+            <div class="merchant-meta" *ngIf="order.restaurant">
+              <span class="merchant-name">{{ order.restaurant.name }}</span>
+              <span *ngIf="order.restaurant.phone">{{ order.restaurant.phone }}</span>
+              <span *ngIf="order.restaurant.address">{{ order.restaurant.address }}</span>
+            </div>
+            <div class="partner-meta" *ngIf="order.deliveryPartner">
+              Delivery partner: {{ order.deliveryPartner.fullName }}
+              <span *ngIf="order.deliveryPartner.phone"> | {{ order.deliveryPartner.phone }}</span>
+            </div>
           </div>
           <div class="order-meta">
             <span class="badge-chip">{{ order.orderStatus }}</span>
@@ -101,6 +110,23 @@ import { RealtimeService } from '../../services/realtime.service';
     .order-card p {
       margin-top: 6px;
       color: var(--qb-text-muted);
+    }
+    .order-copy {
+      display: grid;
+      gap: 8px;
+    }
+    .merchant-meta,
+    .partner-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--qb-text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .merchant-name {
+      color: var(--qb-text);
+      font-weight: 700;
     }
     .order-meta {
       display: grid;
