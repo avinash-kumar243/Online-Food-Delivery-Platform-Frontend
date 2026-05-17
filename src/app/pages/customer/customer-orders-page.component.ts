@@ -5,17 +5,20 @@ import { RouterLink } from '@angular/router';
 import { ReviewComponent } from '../../components/review/review.component';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { Order, Review, ReviewType } from '../../models/app.models';
+import { AccountStatusService } from '../../services/account-status.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { OrderReviewService } from '../../services/order-review.service';
 import { OrderService } from '../../services/order.service';
+import { ProfileService } from '../../services/profile.service';
 import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-customer-orders-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, EmptyStateComponent, LoaderComponent, ReviewComponent],
+  imports: [CommonModule, RouterLink, EmptyStateComponent, LoaderComponent, ReviewComponent, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -28,6 +31,12 @@ import { RealtimeService } from '../../services/realtime.service';
 
     <app-loader *ngIf="loading()"></app-loader>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
+
+    <app-suspension-banner
+      *ngIf="customerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
 
     <section class="stack-list dashboard-section" *ngIf="!loading() && !error() && orders().length; else noOrders">
       <article *ngFor="let order of orders()" class="surface-card order-card">
@@ -59,6 +68,7 @@ import { RealtimeService } from '../../services/realtime.service';
               *ngIf="!hasReview(order.orderId, 'FOOD')"
               type="button"
               class="primary-btn compact-btn"
+              [disabled]="customerSuspended()"
               (click)="openReview(order, 'FOOD')">
               Review food
             </button>
@@ -68,6 +78,7 @@ import { RealtimeService } from '../../services/realtime.service';
               *ngIf="order.deliveryAgentId && !hasReview(order.orderId, 'DELIVERY')"
               type="button"
               class="primary-btn compact-btn"
+              [disabled]="customerSuspended()"
               (click)="openReview(order, 'DELIVERY')">
               Review delivery
             </button>
@@ -90,6 +101,7 @@ import { RealtimeService } from '../../services/realtime.service';
       [reviewType]="selectedReviewType()!"
       [orderId]="selectedOrder()!.orderId"
       [customerId]="customerId()"
+      [isSuspended]="customerSuspended()"
       (submitted)="handleReviewSubmitted($event)"
       (cancel)="closeReview()">
     </app-review>
@@ -177,8 +189,10 @@ export class CustomerOrdersPageComponent {
   private readonly authService = inject(AuthService);
   private readonly orderService = inject(OrderService);
   private readonly orderReviewService = inject(OrderReviewService);
+  private readonly profileService = inject(ProfileService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly customerId = signal(this.authService.getCurrentUser()?.id ?? 0);
   readonly loading = signal(true);
@@ -187,8 +201,10 @@ export class CustomerOrdersPageComponent {
   readonly reviews = signal<Review[]>([]);
   readonly selectedOrder = signal<Order | null>(null);
   readonly selectedReviewType = signal<ReviewType | null>(null);
+  readonly customerSuspended = signal(false);
 
   constructor() {
+    this.loadCustomerStatus();
     this.loadOrders();
     this.realtimeService.orderEvents$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -221,6 +237,10 @@ export class CustomerOrdersPageComponent {
   }
 
   openReview(order: Order, reviewType: ReviewType): void {
+    if (this.customerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     this.selectedOrder.set(order);
     this.selectedReviewType.set(reviewType);
   }
@@ -251,6 +271,20 @@ export class CustomerOrdersPageComponent {
           this.reviews.set([]);
           this.loading.set(false);
         }
+      });
+  }
+
+  private loadCustomerStatus(): void {
+    const customerId = this.customerId();
+    if (!customerId) {
+      return;
+    }
+
+    this.profileService.getCustomerProfile(customerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.customerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
       });
   }
 }
