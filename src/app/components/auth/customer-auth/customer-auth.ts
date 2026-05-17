@@ -63,6 +63,7 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
       const oauth2 = params['oauth2'];
       const userType = params['userType'];
       const userId = params['userId'] ? Number(params['userId']) : null;
+      const reason = params['reason'];
 
       if (token && oauth2 === 'success') {
         this.authService.handleGoogleToken(token, userType, Number.isFinite(userId) ? userId : null);
@@ -71,6 +72,8 @@ export class CustomerAuthComponent implements OnInit, OnDestroy {
         setTimeout(() => {
           this.navigateAfterAuth();
         }, 1000);
+      } else if (oauth2 === 'failed') {
+        this.errorMessage = reason || 'Google login failed. Please try again.';
       }
     });
   }   // ngOnInit() runs after the component is created
