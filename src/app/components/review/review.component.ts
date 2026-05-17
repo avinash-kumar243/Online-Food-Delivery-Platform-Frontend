@@ -3,13 +3,15 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Review, ReviewType } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
+import { AccountStatusService } from '../../services/account-status.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderReviewService } from '../../services/order-review.service';
+import { SuspensionBannerComponent } from '../shared/suspension-banner.component';
 
 @Component({
   selector: 'app-review',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SuspensionBannerComponent],
   template: `
     <section class="review-backdrop" (click)="cancel.emit()">
       <article class="review-card surface-card" (click)="$event.stopPropagation()">
@@ -21,6 +23,11 @@ import { OrderReviewService } from '../../services/order-review.service';
           <button type="button" class="ghost-btn compact-btn" (click)="cancel.emit()">Close</button>
         </div>
 
+        <app-suspension-banner
+          *ngIf="isSuspended"
+          [message]="accountStatusService.getSuspensionBannerMessage()">
+        </app-suspension-banner>
+
         <form [formGroup]="form" class="review-form" (ngSubmit)="submit()">
           <div class="field-group">
             <label>Rating</label>
@@ -30,6 +37,7 @@ import { OrderReviewService } from '../../services/order-review.service';
                 type="button"
                 class="star-button"
                 [class.active]="star <= selectedRating()"
+                [disabled]="isSuspended"
                 (click)="setRating(star)">
                 &#9733;
               </button>
@@ -45,13 +53,14 @@ import { OrderReviewService } from '../../services/order-review.service';
               id="comment"
               rows="4"
               formControlName="comment"
+              [disabled]="isSuspended"
               maxlength="1000"
               placeholder="Share a short note about the order"></textarea>
           </div>
 
           <div class="actions">
             <button type="button" class="secondary-btn" (click)="cancel.emit()">Cancel</button>
-            <button type="submit" class="primary-btn" [disabled]="submitting() || form.invalid">
+            <button type="submit" class="primary-btn" [disabled]="isSuspended || submitting() || form.invalid">
               {{ submitting() ? 'Submitting...' : 'Submit review' }}
             </button>
           </div>
@@ -150,12 +159,14 @@ export class ReviewComponent {
   @Input({ required: true }) reviewType!: ReviewType;
   @Input({ required: true }) orderId!: number;
   @Input({ required: true }) customerId!: number;
+  @Input() isSuspended = false;
   @Output() submitted = new EventEmitter<Review>();
   @Output() cancel = new EventEmitter<void>();
 
   private readonly fb = inject(FormBuilder);
   private readonly orderReviewService = inject(OrderReviewService);
   private readonly notificationService = inject(NotificationService);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly stars = [1, 2, 3, 4, 5];
   readonly submitting = signal(false);
@@ -167,12 +178,20 @@ export class ReviewComponent {
   });
 
   setRating(rating: number): void {
+    if (this.isSuspended) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     this.selectedRating.set(rating);
     this.form.controls.rating.setValue(rating);
     this.form.controls.rating.markAsTouched();
   }
 
   submit(): void {
+    if (this.isSuspended) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
       return;
