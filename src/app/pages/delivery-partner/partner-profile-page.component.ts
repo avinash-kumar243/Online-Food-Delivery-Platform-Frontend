@@ -3,7 +3,9 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { DeliveryPartner } from '../../models/app.models';
+import { AccountStatusService } from '../../services/account-status.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
@@ -12,7 +14,7 @@ import { ProfileService } from '../../services/profile.service';
 @Component({
   selector: 'app-partner-profile-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, LoaderComponent, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -24,6 +26,11 @@ import { ProfileService } from '../../services/profile.service';
 
     <app-loader *ngIf="loading()"></app-loader>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
+    <app-suspension-banner
+      *ngIf="partnerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
 
     <form *ngIf="!loading() && !error() && profile()" class="profile-layout" [formGroup]="form" (ngSubmit)="save()">
       <article class="surface-card profile-summary-card">
@@ -60,7 +67,7 @@ import { ProfileService } from '../../services/profile.service';
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="primary-btn" [disabled]="saving() || form.invalid">{{ saving() ? 'Saving...' : 'Save changes' }}</button>
+          <button type="submit" class="primary-btn" [disabled]="partnerSuspended() || saving() || form.invalid">{{ saving() ? 'Saving...' : 'Save changes' }}</button>
         </div>
       </article>
     </form>
@@ -147,11 +154,13 @@ export class PartnerProfilePageComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal('');
   readonly profile = signal<DeliveryPartner | null>(null);
+  readonly partnerSuspended = signal(false);
   readonly form = this.fb.nonNullable.group({
     fullName: ['', Validators.required],
     phone: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
@@ -171,6 +180,7 @@ export class PartnerProfilePageComponent {
       .subscribe({
         next: (profile) => {
           this.profile.set(profile);
+          this.partnerSuspended.set(this.accountStatusService.isSuspended(profile));
           this.form.patchValue({
             fullName: profile.fullName ?? '',
             phone: profile.phone ?? '',
@@ -201,6 +211,10 @@ export class PartnerProfilePageComponent {
   save(): void {
     const partnerId = this.authService.getCurrentUser()?.id;
     const profile = this.profile();
+    if (this.partnerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     if (!partnerId || !profile || this.form.invalid) {
       this.form.markAllAsTouched();
       return;
