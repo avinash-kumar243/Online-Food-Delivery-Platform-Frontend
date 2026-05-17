@@ -10,11 +10,17 @@ interface NotificationApiResponse {
   recipientRole?: string | null;
   sentAt: string;
   type: string;
+  notificationType?: string | null;
   channel: string;
   title: string;
   message: string;
   relatedId?: string | null;
   relatedType?: string | null;
+  orderId?: string | null;
+  deliveryId?: string | null;
+  rating?: number | null;
+  actorName?: string | null;
+  reviewText?: string | null;
   read?: boolean;
   isRead?: boolean;
   readAt?: string | null;
@@ -94,11 +100,17 @@ export class AppNotificationService {
       recipientRole: item.recipientRole ?? null,
       sentAt: item.sentAt,
       type: item.type,
+      notificationType: item.notificationType ?? item.type,
       channel: item.channel,
       title: item.title,
       message: item.message,
       relatedId: item.relatedId ?? null,
       relatedType: item.relatedType ?? null,
+      orderId: item.orderId ?? null,
+      deliveryId: item.deliveryId ?? null,
+      rating: item.rating ?? null,
+      actorName: item.actorName ?? null,
+      reviewText: item.reviewText ?? null,
       isRead: Boolean(item.read ?? item.isRead),
       readAt: item.readAt ?? null
     };
