@@ -36,7 +36,6 @@ export const ROLE_NAV_ITEMS: Record<UserRole, ShellNavItem[]> = {
     { label: 'Orders', path: '/admin/orders', icon: 'Order' },
     { label: 'Payments', path: '/admin/payments', icon: 'Wallet' },
     { label: 'Reviews', path: '/admin/reviews', icon: 'Review' },
-    { label: 'Notifications', path: '/admin/notifications', icon: 'Bell' },
     { label: 'Analytics', path: '/admin/analytics', icon: 'Trend' }
   ]
 };
