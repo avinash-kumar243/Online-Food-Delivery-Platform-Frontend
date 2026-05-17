@@ -55,11 +55,16 @@ export class RealtimeService {
         import('sockjs-client')
       ]);
 
-      const SockJS = (sockJsModule.default ?? sockJsModule) as new (url: string) => WebSocket;
+      const SockJS = this.resolveSockJsFactory(sockJsModule);
+      if (!SockJS) {
+        this.connectedToken = null;
+        return;
+      }
+
       const socketUrl = `${environment.apiGatewayBaseUrl || ''}/ws/orders`;
 
       this.client = new Client({
-        webSocketFactory: () => new SockJS(socketUrl),
+        webSocketFactory: () => SockJS(socketUrl),
         connectHeaders: {
           Authorization: `Bearer ${token}`
         },
@@ -77,7 +82,7 @@ export class RealtimeService {
       this.client.activate();
     } catch (error) {
       this.connectedToken = null;
-      console.error('Failed to initialize real-time client.', error);
+      console.warn('Real-time client is unavailable in this environment.', error);
     } finally {
       this.connectInFlight = false;
     }
@@ -138,5 +143,24 @@ export class RealtimeService {
       this.paymentEventsSubject.next(event);
       this.notificationService.info(`Payment updated for order #${event.orderId}.`);
     });
+  }
+
+  private resolveSockJsFactory(
+    sockJsModule: unknown
+  ): ((url: string) => WebSocket) | null {
+    const candidates = [
+      sockJsModule,
+      (sockJsModule as { default?: unknown } | null)?.default,
+      (sockJsModule as { SockJS?: unknown } | null)?.SockJS,
+      ((sockJsModule as { default?: { SockJS?: unknown } } | null)?.default)?.SockJS
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'function') {
+        return candidate as (url: string) => WebSocket;
+      }
+    }
+
+    return null;
   }
 }
