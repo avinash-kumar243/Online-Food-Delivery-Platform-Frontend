@@ -209,6 +209,24 @@ export interface OrderItem {
   lineTotal?: number;
 }
 
+export interface OrderRestaurantInfo {
+  restaurantId: number;
+  name: string;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  isOpen?: boolean | null;
+  isApproved?: boolean | null;
+}
+
+export interface OrderDeliveryPartnerInfo {
+  deliveryAgentId: number;
+  userId?: number | null;
+  fullName: string;
+  phone?: string | null;
+  verificationStatus?: string | null;
+}
+
 export interface Order {
   orderId: number;
   customerId: number;
@@ -225,6 +243,8 @@ export interface Order {
   deliveryAddress: string;
   specialInstructions?: string | null;
   items: OrderItem[];
+  restaurant?: OrderRestaurantInfo | null;
+  deliveryPartner?: OrderDeliveryPartnerInfo | null;
 }
 
 export interface Review {
@@ -380,6 +400,8 @@ export interface AdminRestaurantRecord {
   address: string;
   city: string;
   phone: string;
+  avgRating?: number | null;
+  totalOrders?: number | null;
   isOpen: boolean;
   isApproved: boolean;
   approvalStatus: string;
@@ -395,11 +417,13 @@ export interface AdminDeliveryPartnerRecord {
   fullName: string;
   email?: string | null;
   phone: string;
+  avgRating?: number | null;
   vehicleType: string;
   vehicleNumber: string;
   isAvailable: boolean;
   isVerified: boolean;
   verificationStatus: string;
+  totalDeliveries?: number | null;
   submittedAt?: string | null;
   rejectionReason?: string | null;
   reviewedByAdminId?: number | null;
@@ -418,11 +442,17 @@ export interface AppNotification {
   recipientRole?: UserRole | string | null;
   sentAt: string;
   type: string;
+  notificationType?: string | null;
   channel: string;
   title: string;
   message: string;
   relatedId?: string | null;
   relatedType?: string | null;
+  orderId?: string | null;
+  deliveryId?: string | null;
+  rating?: number | null;
+  actorName?: string | null;
+  reviewText?: string | null;
   isRead: boolean;
   readAt?: string | null;
 }
