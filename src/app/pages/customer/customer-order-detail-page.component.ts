@@ -62,8 +62,8 @@ import { ORDER_FLOW, ORDER_LABELS } from '../../shared/order-flow';
             <div class="meta-row"><span>Payment mode</span><strong>{{ order.modeOfPayment }}</strong></div>
             <div class="meta-row"><span>Delivery address</span><strong>{{ order.deliveryAddress }}</strong></div>
             <div class="meta-row"><span>Total</span><strong>Rs {{ order.finalAmount.toFixed(2) }}</strong></div>
-            <div class="meta-row" *ngIf="order.deliveryPartner"><span>Delivery partner</span><strong>{{ order.deliveryPartner.fullName }}</strong></div>
-            <div class="meta-row" *ngIf="order.deliveryPartner?.phone"><span>Partner phone</span><strong>{{ order.deliveryPartner.phone }}</strong></div>
+            <div class="meta-row" *ngIf="order?.deliveryPartner"><span>Delivery partner</span><strong>{{ order?.deliveryPartner?.fullName }}</strong></div>
+            <div class="meta-row" *ngIf="order?.deliveryPartner?.phone"><span>Partner phone</span><strong>{{ order?.deliveryPartner?.phone }}</strong></div>
           </div>
         </article>
       </section>
