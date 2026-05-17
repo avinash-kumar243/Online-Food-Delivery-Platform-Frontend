@@ -3,6 +3,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { getErrorMessage } from '../../services/api.utils';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
+import { AccountStatusService } from '../../services/account-status.service';
 import { AuthService } from '../../services/auth.service';
 import { DeliveryPartnerService } from '../../services/delivery-partner.service';
 import { NotificationService } from '../../services/notification.service';
@@ -11,7 +13,7 @@ import { ProfileService } from '../../services/profile.service';
 @Component({
   selector: 'app-delivery-registration-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -21,6 +23,11 @@ import { ProfileService } from '../../services/profile.service';
     </section>
 
     <section *ngIf="existingFeedback()" class="empty-state dashboard-section">Last admin feedback: {{ existingFeedback() }}</section>
+    <app-suspension-banner
+      *ngIf="partnerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
 
     <form class="surface-card form-card" [formGroup]="form" (ngSubmit)="submit()">
       <div class="form-grid">
@@ -30,7 +37,7 @@ import { ProfileService } from '../../services/profile.service';
         <label><span>Address</span><input formControlName="address" /></label>
       </div>
       <div class="form-actions">
-        <button type="submit" class="primary-btn" [disabled]="submitting() || form.invalid">{{ submitting() ? 'Submitting...' : existingFeedback() ? 'Resubmit profile' : 'Submit profile' }}</button>
+        <button type="submit" class="primary-btn" [disabled]="partnerSuspended() || submitting() || form.invalid">{{ submitting() ? 'Submitting...' : existingFeedback() ? 'Resubmit profile' : 'Submit profile' }}</button>
       </div>
     </form>
   `,
@@ -55,9 +62,11 @@ export class DeliveryRegistrationPageComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly profileService = inject(ProfileService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly submitting = signal(false);
   readonly existingFeedback = signal('');
+  readonly partnerSuspended = signal(false);
   readonly form = this.fb.nonNullable.group({
     vehicleType: ['', Validators.required],
     vehicleNumber: ['', Validators.required],
@@ -70,6 +79,13 @@ export class DeliveryRegistrationPageComponent {
     if (!partnerId) {
       return;
     }
+
+    this.profileService.getDeliveryPartnerProfile(partnerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.partnerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
+      });
 
     this.deliveryService.getMyDeliveryProfile(partnerId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -89,6 +105,10 @@ export class DeliveryRegistrationPageComponent {
 
   submit(): void {
     const partnerId = this.authService.getCurrentUser()?.id;
+    if (this.partnerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     if (!partnerId || this.form.invalid) {
       return;
     }
