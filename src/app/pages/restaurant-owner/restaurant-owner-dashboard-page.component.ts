@@ -3,10 +3,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { DashboardStats, MenuItem, Restaurant } from '../../models/app.models';
+import { AccountStatusService } from '../../services/account-status.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { MenuService } from '../../services/menu.service';
+import { NotificationService } from '../../services/notification.service';
+import { ProfileService } from '../../services/profile.service';
 import { RealtimeService } from '../../services/realtime.service';
 import { RestaurantService } from '../../services/restaurant.service';
 import { StatsService } from '../../services/stats.service';
@@ -14,7 +18,7 @@ import { StatsService } from '../../services/stats.service';
 @Component({
   selector: 'app-restaurant-owner-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, LoaderComponent],
+  imports: [CommonModule, RouterLink, LoaderComponent, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -24,7 +28,8 @@ import { StatsService } from '../../services/stats.service';
       </div>
       <a
         [routerLink]="restaurant()?.isApproved ? '/restaurant-owner/menu' : '/restaurant-owner/register-restaurant'"
-        class="primary-btn">
+        class="primary-btn"
+        [class.disabled-link]="ownerSuspended()">
         {{ restaurant()?.isApproved ? 'Manage menu' : restaurant() ? 'Update restaurant' : 'Register restaurant' }}
       </a>
     </section>
@@ -33,6 +38,12 @@ import { StatsService } from '../../services/stats.service';
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
 
     <ng-container *ngIf="!loading() && !error()">
+      <app-suspension-banner
+        *ngIf="ownerSuspended()"
+        class="dashboard-section"
+        [message]="accountStatusService.getSuspensionBannerMessage()">
+      </app-suspension-banner>
+
       <section class="surface-card hero-card" *ngIf="restaurant() as restaurant; else noRestaurant">
         <div>
           <span class="dashboard-kicker">{{ restaurant.status || (restaurant.isApproved ? 'APPROVED' : 'PENDING_APPROVAL') }}</span>
@@ -49,7 +60,7 @@ import { StatsService } from '../../services/stats.service';
             *ngIf="restaurant.isApproved"
             type="button"
             class="primary-btn status-toggle-btn"
-            [disabled]="updatingStatus()"
+            [disabled]="ownerSuspended() || updatingStatus()"
             (click)="toggleRestaurantStatus()">
             {{ updatingStatus() ? 'Updating...' : restaurant.isOpen ? 'Close restaurant' : 'Open restaurant' }}
           </button>
@@ -62,7 +73,7 @@ import { StatsService } from '../../services/stats.service';
           <h2>Your restaurant is live for menu setup.</h2>
           <p class="dashboard-subtitle">You can now add menu items and start preparing the catalog for customers.</p>
         </div>
-        <a routerLink="/restaurant-owner/menu" class="primary-btn">Open menu manager</a>
+        <a routerLink="/restaurant-owner/menu" class="primary-btn" [class.disabled-link]="ownerSuspended()">Open menu manager</a>
       </section>
 
       <ng-template #noRestaurant>
@@ -147,6 +158,10 @@ import { StatsService } from '../../services/stats.service';
       width: 100%;
       margin-top: 8px;
     }
+    .disabled-link {
+      pointer-events: none;
+      opacity: 0.6;
+    }
     @media (max-width: 860px) {
       .approved-actions,
       .hero-card {
@@ -174,8 +189,11 @@ export class RestaurantOwnerDashboardPageComponent {
   private readonly restaurantService = inject(RestaurantService);
   private readonly menuService = inject(MenuService);
   private readonly statsService = inject(StatsService);
+  private readonly profileService = inject(ProfileService);
+  private readonly notificationService = inject(NotificationService);
   private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly error = signal('');
@@ -183,6 +201,7 @@ export class RestaurantOwnerDashboardPageComponent {
   readonly stats = signal<DashboardStats | null>(null);
   readonly menuItems = signal<MenuItem[]>([]);
   readonly updatingStatus = signal(false);
+  readonly ownerSuspended = signal(false);
 
   constructor() {
     const ownerId = this.authService.getCurrentUser()?.id;
@@ -191,6 +210,13 @@ export class RestaurantOwnerDashboardPageComponent {
       this.loading.set(false);
       return;
     }
+
+    this.profileService.getRestaurantOwnerProfile(ownerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.ownerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
+      });
 
     this.loadDashboard(ownerId);
 
@@ -242,6 +268,10 @@ export class RestaurantOwnerDashboardPageComponent {
     if (!restaurant || !restaurant.isApproved || this.updatingStatus()) {
       return;
     }
+    if (this.ownerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
 
     this.updatingStatus.set(true);
     this.restaurantService.updateRestaurantStatus(restaurant.restaurantId, !restaurant.isOpen)
@@ -249,6 +279,7 @@ export class RestaurantOwnerDashboardPageComponent {
       .subscribe({
         next: (updatedRestaurant) => {
           this.restaurant.set(updatedRestaurant);
+          this.notificationService.success(`Restaurant is now ${updatedRestaurant.isOpen ? 'open' : 'closed'}.`);
           this.updatingStatus.set(false);
         },
         error: (error) => {
