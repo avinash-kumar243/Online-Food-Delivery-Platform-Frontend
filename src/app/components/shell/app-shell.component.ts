@@ -94,6 +94,17 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
                   (click)="openNotification(notification)">
                   <span class="notification-item-title">{{ notification.title }}</span>
                   <span class="notification-item-message">{{ notification.message }}</span>
+                  <span class="notification-item-badges" *ngIf="notification.orderId || notification.deliveryId">
+                    <span class="notification-chip" *ngIf="notification.orderId">Order {{ notification.orderId }}</span>
+                    <span class="notification-chip" *ngIf="notification.deliveryId">Delivery {{ notification.deliveryId }}</span>
+                  </span>
+                  <span class="notification-rating" *ngIf="notification.rating">
+                    <span class="notification-stars">{{ renderStars(notification.rating) }}</span>
+                    <span class="notification-rating-copy">
+                      {{ notification.rating }}/5
+                      <ng-container *ngIf="notification.actorName"> by {{ notification.actorName }}</ng-container>
+                    </span>
+                  </span>
                   <span class="notification-item-meta">
                     {{ formatRelativeTime(notification.sentAt) }}
                     <strong *ngIf="!notification.isRead">Unread</strong>
@@ -595,6 +606,42 @@ import { CustomerAuthPromptComponent } from '../shared/customer-auth-prompt.comp
       color: var(--qb-text-muted);
     }
 
+    .notification-item-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .notification-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(15, 122, 95, 0.08);
+      color: var(--qb-primary);
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .notification-rating {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #b45309;
+      font-size: 0.8rem;
+    }
+
+    .notification-stars {
+      letter-spacing: 0.08em;
+      font-size: 0.9rem;
+    }
+
+    .notification-rating-copy {
+      color: var(--qb-text-muted);
+      line-height: 1.4;
+    }
+
     .notification-item-meta {
       display: flex;
       align-items: center;
@@ -852,6 +899,7 @@ export class AppShellComponent {
   readonly profileImageUrl = computed(() => this.currentUser()?.profilePicUrl?.trim() || '');
   readonly notifications = computed(() => this.notificationState.notifications());
   readonly unreadCount = computed(() => this.notificationState.unreadCount());
+  readonly relativeTimeTick = signal(Date.now());
   readonly isMobileNavOpen = signal(false);
   readonly isProfileMenuOpen = signal(false);
   readonly isNotificationMenuOpen = signal(false);
@@ -908,6 +956,7 @@ export class AppShellComponent {
     interval(30000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
+        this.relativeTimeTick.set(Date.now());
         if (!this.showNotificationBell()) {
           return;
         }
@@ -1050,11 +1099,12 @@ export class AppShellComponent {
   }
 
   formatRelativeTime(value?: string | null): string {
+    this.relativeTimeTick();
     if (!value) {
       return 'Just now';
     }
 
-    const timestamp = new Date(value).getTime();
+    const timestamp = this.parseTimestamp(value);
     if (Number.isNaN(timestamp)) {
       return 'Just now';
     }
@@ -1068,12 +1118,23 @@ export class AppShellComponent {
       return 'Just now';
     }
     if (diff < hour) {
-      return `${Math.floor(diff / minute)} min ago`;
+      const minutes = Math.floor(diff / minute);
+      return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
     }
     if (diff < day) {
-      return `${Math.floor(diff / hour)} hr ago`;
+      const hours = Math.floor(diff / hour);
+      return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
     }
-    return `${Math.floor(diff / day)} day${diff >= 2 * day ? 's' : ''} ago`;
+    if (diff < 2 * day) {
+      return 'Yesterday';
+    }
+    const days = Math.floor(diff / day);
+    return `${days} days ago`;
+  }
+
+  renderStars(rating?: number | null): string {
+    const normalized = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+    return `${'★'.repeat(normalized)}${'☆'.repeat(5 - normalized)}`;
   }
 
   private loadNotifications(): void {
@@ -1176,5 +1237,10 @@ export class AppShellComponent {
 
     const fallback = email?.split('@')[0]?.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2);
     return (fallback || 'QB').toUpperCase();
+  }
+
+  private parseTimestamp(value: string): number {
+    const normalized = /[zZ]|[+\-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
+    return new Date(normalized).getTime();
   }
 }
