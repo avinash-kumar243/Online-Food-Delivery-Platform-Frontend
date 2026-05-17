@@ -5,11 +5,14 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
+import { AccountStatusService } from '../../services/account-status.service';
 import { AuthService } from '../../services/auth.service';
 import { CartService } from '../../services/cart.service';
 import { CustomerAccessService } from '../../services/customer-access.service';
 import { MenuService } from '../../services/menu.service';
 import { NotificationService } from '../../services/notification.service';
+import { ProfileService } from '../../services/profile.service';
 import { RestaurantService } from '../../services/restaurant.service';
 import { MenuItem, Restaurant, RestaurantMenu } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
@@ -17,7 +20,7 @@ import { getErrorMessage } from '../../services/api.utils';
 @Component({
   selector: 'app-restaurant-detail-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, LoaderComponent, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, RouterLink, LoaderComponent, EmptyStateComponent, SuspensionBannerComponent],
   template: `
     <a routerLink="/customer/restaurants" class="ghost-btn back-btn">Back to restaurants</a>
 
@@ -46,6 +49,11 @@ import { getErrorMessage } from '../../services/api.utils';
       </section>
 
       <section class="surface-card filters-card dashboard-section">
+        <app-suspension-banner
+          *ngIf="customerSuspended()"
+          class="dashboard-section"
+          [message]="accountStatusService.getSuspensionBannerMessage()">
+        </app-suspension-banner>
         <input [(ngModel)]="query" (ngModelChange)="applyFilter()" placeholder="Search menu items" />
       </section>
 
@@ -87,7 +95,7 @@ import { getErrorMessage } from '../../services/api.utils';
               type="button"
               class="primary-btn"
               [class.closed-btn]="!restaurant.isOpen"
-              [disabled]="!restaurant.isOpen || !item.isAvailable || addingItemId() === item.itemId"
+              [disabled]="customerSuspended() || !restaurant.isOpen || !item.isAvailable || addingItemId() === item.itemId"
               (click)="addToCart(item)">
               {{ addingItemId() === item.itemId ? 'Adding...' : 'Add to cart' }}
             </button>
@@ -225,9 +233,11 @@ export class RestaurantDetailPageComponent {
   private readonly cartService = inject(CartService);
   private readonly authService = inject(AuthService);
   private readonly customerAccessService = inject(CustomerAccessService);
+  private readonly profileService = inject(ProfileService);
   private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly error = signal('');
@@ -236,10 +246,21 @@ export class RestaurantDetailPageComponent {
   readonly filteredItems = signal<MenuItem[]>([]);
   readonly addingItemId = signal<number | null>(null);
   readonly brokenImages = signal<Record<number, boolean>>({});
+  readonly customerSuspended = signal(false);
 
   query = '';
 
   constructor() {
+    const customerId = this.authService.getCurrentUser()?.id;
+    if (this.authService.getUserRole() === 'CUSTOMER' && customerId) {
+      this.profileService.getCustomerProfile(customerId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (profile) => this.customerSuspended.set(this.accountStatusService.isSuspended(profile)),
+          error: () => undefined
+        });
+    }
+
     const restaurantId = Number(this.route.snapshot.paramMap.get('restaurantId'));
     this.restaurantService.getRestaurantById(restaurantId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -270,6 +291,10 @@ export class RestaurantDetailPageComponent {
   }
 
   addToCart(item: MenuItem): void {
+    if (this.customerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     const currentRole = this.authService.getUserRole();
     const customerId = this.authService.getCurrentUser()?.id;
     const restaurantId = this.restaurant()?.restaurantId;
