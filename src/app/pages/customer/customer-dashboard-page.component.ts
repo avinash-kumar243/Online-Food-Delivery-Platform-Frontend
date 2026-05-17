@@ -4,16 +4,26 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { Restaurant } from '../../models/app.models';
+import { AccountStatusService } from '../../services/account-status.service';
+import { AuthService } from '../../services/auth.service';
 import { getCustomerRestaurantImage } from '../../shared/restaurant-visuals';
 import { getErrorMessage } from '../../services/api.utils';
+import { ProfileService } from '../../services/profile.service';
 import { RestaurantService } from '../../services/restaurant.service';
 
 @Component({
   selector: 'app-customer-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, LoaderComponent, EmptyStateComponent],
+  imports: [CommonModule, RouterLink, LoaderComponent, EmptyStateComponent, SuspensionBannerComponent],
   template: `
+    <app-suspension-banner
+      *ngIf="customerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
+
     <section class="hero-shell">
       <article class="hero-banner surface-card">
         <div class="hero-visuals" aria-hidden="true">
@@ -436,14 +446,28 @@ import { RestaurantService } from '../../services/restaurant.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomerDashboardPageComponent {
+  private readonly authService = inject(AuthService);
+  private readonly profileService = inject(ProfileService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly error = signal('');
   readonly featuredRestaurants = signal<Restaurant[]>([]);
+  readonly customerSuspended = signal(false);
 
   constructor() {
+    const customerId = this.authService.getCurrentUser()?.id;
+    if (customerId) {
+      this.profileService.getCustomerProfile(customerId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (profile) => this.customerSuspended.set(this.accountStatusService.isSuspended(profile)),
+          error: () => undefined
+        });
+    }
+
     this.restaurantService.getApprovedRestaurants()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
