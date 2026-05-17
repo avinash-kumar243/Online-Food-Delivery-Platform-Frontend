@@ -216,6 +216,7 @@
 
   .dashboard-header {
     padding: 12px 14px;
+    align-items: flex-start;
   }
 
   .brand-mark {
@@ -232,5 +233,26 @@
 
   .profile-actions {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand {
+    min-width: 0;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .profile-dropdown {
+    right: 0;
+    width: min(100%, calc(100vw - 20px));
   }
 }
