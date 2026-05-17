@@ -5,11 +5,14 @@ import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
+import { AccountStatusService } from '../../services/account-status.service';
 import { AuthService } from '../../services/auth.service';
 import { CartService } from '../../services/cart.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderService } from '../../services/order.service';
 import { PaymentService, RazorpayOrderPayload } from '../../services/payment.service';
+import { ProfileService } from '../../services/profile.service';
 import { RestaurantService } from '../../services/restaurant.service';
 import { PlaceOrderRequest, Cart, Restaurant } from '../../models/app.models';
 import { getErrorMessage } from '../../services/api.utils';
@@ -26,7 +29,7 @@ declare global {
 @Component({
   selector: 'app-customer-cart-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoaderComponent, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, LoaderComponent, EmptyStateComponent, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -40,6 +43,12 @@ declare global {
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
 
     <ng-container *ngIf="!loading() && !error()">
+      <app-suspension-banner
+        *ngIf="customerSuspended()"
+        class="dashboard-section"
+        [message]="accountStatusService.getSuspensionBannerMessage()">
+      </app-suspension-banner>
+
       <app-empty-state *ngIf="!cart()?.items?.length" title="Your cart is empty" description="Add menu items from a restaurant to start your order."></app-empty-state>
 
       <section class="split-layout" *ngIf="cart()?.items?.length">
@@ -56,10 +65,10 @@ declare global {
                 <p>Rs {{ item.price }} each</p>
               </div>
               <div class="cart-actions">
-                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.menuItemId, item.quantity - 1)" [disabled]="item.quantity <= 1">-</button>
+                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.menuItemId, item.quantity - 1)" [disabled]="customerSuspended() || item.quantity <= 1">-</button>
                 <span>{{ item.quantity }}</span>
-                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.menuItemId, item.quantity + 1)">+</button>
-                <button type="button" class="ghost-btn" (click)="remove(item.menuItemId)">Remove</button>
+                <button type="button" class="secondary-btn qty-btn" (click)="changeQuantity(item.menuItemId, item.quantity + 1)" [disabled]="customerSuspended()">+</button>
+                <button type="button" class="ghost-btn" (click)="remove(item.menuItemId)" [disabled]="customerSuspended()">Remove</button>
               </div>
             </div>
           </div>
@@ -91,7 +100,7 @@ declare global {
             <div class="meta-row"><span>Taxes</span><strong>Rs {{ totals.taxes.toFixed(2) }}</strong></div>
             <div class="meta-row"><span>Grand total</span><strong>Rs {{ totals.grandTotal.toFixed(2) }}</strong></div>
             <button type="button" class="primary-btn" [disabled]="placingOrder() || !canPlaceOrder()" (click)="placeOrder()">
-              {{ !canPlaceOrder() ? 'Restaurant closed' : placingOrder() ? 'Placing order...' : 'Place order' }}
+              {{ customerSuspended() ? 'Account suspended' : !canPlaceOrder() ? 'Restaurant closed' : placingOrder() ? 'Placing order...' : 'Place order' }}
             </button>
           </div>
         </article>
@@ -150,15 +159,18 @@ export class CustomerCartPageComponent {
   private readonly orderService = inject(OrderService);
   private readonly paymentService = inject(PaymentService);
   private readonly notificationService = inject(NotificationService);
+  private readonly profileService = inject(ProfileService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly error = signal('');
   readonly cart = signal<Cart | null>(null);
   readonly placingOrder = signal(false);
   readonly currentRestaurant = signal<Restaurant | null>(null);
+  readonly customerSuspended = signal(false);
   private checkoutReference: string | null = null;
 
   deliveryAddress = '';
@@ -170,7 +182,22 @@ export class CustomerCartPageComponent {
   }
 
   constructor() {
+    this.loadCustomerStatus();
     this.loadCart();
+  }
+
+  private loadCustomerStatus(): void {
+    const customerId = this.authService.getCurrentUser()?.id;
+    if (!customerId) {
+      return;
+    }
+
+    this.profileService.getCustomerProfile(customerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.customerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
+      });
   }
 
   loadCart(): void {
@@ -197,6 +224,10 @@ export class CustomerCartPageComponent {
   }
 
   changeQuantity(menuItemId: number, quantity: number): void {
+    if (this.customerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     if (quantity < 1) {
       return;
     }
@@ -215,6 +246,10 @@ export class CustomerCartPageComponent {
   }
 
   remove(menuItemId: number): void {
+    if (this.customerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     const customerId = this.authService.getCurrentUser()?.id;
     if (!customerId) return;
 
@@ -231,6 +266,10 @@ export class CustomerCartPageComponent {
   }
 
   placeOrder(): void {
+    if (this.customerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     const customerId = this.authService.getCurrentUser()?.id;
     const cart = this.cart();
     if (!customerId || !cart?.items.length || !cart.restaurantId) {
@@ -446,6 +485,9 @@ export class CustomerCartPageComponent {
   }
 
   canPlaceOrder(): boolean {
+    if (this.customerSuspended()) {
+      return false;
+    }
     const restaurant = this.currentRestaurant();
     return restaurant ? restaurant.isOpen : true;
   }
