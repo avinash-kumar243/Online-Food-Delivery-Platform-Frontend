@@ -3,17 +3,20 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { Restaurant } from '../../models/app.models';
 import { RESTAURANT_CUISINES } from '../../constants/restaurant-cuisine';
+import { AccountStatusService } from '../../services/account-status.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
+import { ProfileService } from '../../services/profile.service';
 import { RestaurantService } from '../../services/restaurant.service';
 
 @Component({
   selector: 'app-restaurant-registration-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -26,6 +29,12 @@ import { RestaurantService } from '../../services/restaurant.service';
     <section *ngIf="existingRestaurant()?.rejectionReason" class="empty-state dashboard-section">
       Last admin feedback: {{ existingRestaurant()?.rejectionReason }}
     </section>
+
+    <app-suspension-banner
+      *ngIf="ownerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
 
     <form class="surface-card form-card" [formGroup]="form" (ngSubmit)="submit()">
       <div class="form-grid">
@@ -54,7 +63,7 @@ import { RestaurantService } from '../../services/restaurant.service';
       <button
         type="submit"
         class="primary-btn"
-        [disabled]="submitting() || form.invalid || (existingRestaurant() && !hasMeaningfulChanges())">
+        [disabled]="ownerSuspended() || submitting() || form.invalid || (existingRestaurant() && !hasMeaningfulChanges())">
         {{ submitting() ? 'Submitting...' : existingRestaurant() ? 'Resubmit restaurant' : 'Submit registration' }}
       </button>
     </form>
@@ -76,12 +85,15 @@ export class RestaurantRegistrationPageComponent {
   private readonly authService = inject(AuthService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly notificationService = inject(NotificationService);
+  private readonly profileService = inject(ProfileService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly submitting = signal(false);
   readonly existingRestaurant = signal<Restaurant | null>(null);
   readonly hasMeaningfulChanges = signal(false);
+  readonly ownerSuspended = signal(false);
   readonly cuisines = RESTAURANT_CUISINES;
   readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
@@ -103,6 +115,13 @@ export class RestaurantRegistrationPageComponent {
     if (!ownerId) {
       return;
     }
+
+    this.profileService.getRestaurantOwnerProfile(ownerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.ownerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
+      });
 
     this.restaurantService.getMyRestaurant(ownerId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -144,6 +163,10 @@ export class RestaurantRegistrationPageComponent {
 
   submit(): void {
     const ownerId = this.authService.getCurrentUser()?.id;
+    if (this.ownerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     if (!ownerId || this.form.invalid || (this.existingRestaurant() && !this.hasMeaningfulChanges())) {
       this.form.markAllAsTouched();
       return;
