@@ -62,6 +62,7 @@ export class RestaurantAuthComponent implements OnInit, OnDestroy {
       const userType = params['userType'];
       const userId = params['userId'] ? Number(params['userId']) : null;
       const reason = params['reason'];
+      const session = params['session'];
 
       if (token && oauth2 === 'success') {
         this.authService.handleGoogleToken(token, userType, Number.isFinite(userId) ? userId : null);
@@ -72,6 +73,12 @@ export class RestaurantAuthComponent implements OnInit, OnDestroy {
         }, 1000);
       } else if (oauth2 === 'failed') {
         this.errorMessage = reason || 'Google login failed. Please try again.';
+      } else if (session === 'suspended') {
+        this.errorMessage = 'Your account has been suspended. Please contact support.';
+      } else if (session === 'deleted') {
+        this.errorMessage = 'Your account no longer exists.';
+      } else if (session === 'expired') {
+        this.errorMessage = 'Your session expired. Please login again.';
       }
     });
   }
