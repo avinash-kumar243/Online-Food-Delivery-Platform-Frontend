@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { LoaderComponent } from '../../components/shared/loader.component';
 import { Order, Payment } from '../../models/app.models';
+import { getErrorMessage } from '../../services/api.utils';
 import { OrderService } from '../../services/order.service';
 import { PaymentService } from '../../services/payment.service';
-import { getErrorMessage } from '../../services/api.utils';
+import { RealtimeService } from '../../services/realtime.service';
 import { ORDER_FLOW, ORDER_LABELS } from '../../shared/order-flow';
 
 @Component({
@@ -32,10 +33,22 @@ import { ORDER_FLOW, ORDER_LABELS } from '../../shared/order-flow';
 
       <section class="split-layout dashboard-section">
         <article class="surface-card section-card">
+          <h2>Restaurant</h2>
+          <div class="contact-card" *ngIf="order.restaurant; else restaurantFallback">
+            <strong>{{ order.restaurant.name }}</strong>
+            <p *ngIf="order.restaurant.phone">Phone: {{ order.restaurant.phone }}</p>
+            <p *ngIf="order.restaurant.address">{{ order.restaurant.address }}<ng-container *ngIf="order.restaurant.city">, {{ order.restaurant.city }}</ng-container></p>
+          </div>
+          <ng-template #restaurantFallback>
+            <p class="muted-copy">Restaurant details will appear here when available.</p>
+          </ng-template>
+        </article>
+
+        <article class="surface-card section-card">
           <h2>Items</h2>
           <div class="stack-list">
             <div *ngFor="let item of order.items" class="meta-row">
-              <span>{{ item.name }} × {{ item.quantity }}</span>
+              <span>{{ item.name }} x {{ item.quantity }}</span>
               <strong>Rs {{ (item.lineTotal || (item.price * item.quantity)).toFixed(2) }}</strong>
             </div>
           </div>
@@ -49,7 +62,8 @@ import { ORDER_FLOW, ORDER_LABELS } from '../../shared/order-flow';
             <div class="meta-row"><span>Payment mode</span><strong>{{ order.modeOfPayment }}</strong></div>
             <div class="meta-row"><span>Delivery address</span><strong>{{ order.deliveryAddress }}</strong></div>
             <div class="meta-row"><span>Total</span><strong>Rs {{ order.finalAmount.toFixed(2) }}</strong></div>
-            <div class="meta-row" *ngIf="order.deliveryAgentId"><span>Delivery partner</span><strong>#{{ order.deliveryAgentId }}</strong></div>
+            <div class="meta-row" *ngIf="order.deliveryPartner"><span>Delivery partner</span><strong>{{ order.deliveryPartner.fullName }}</strong></div>
+            <div class="meta-row" *ngIf="order.deliveryPartner?.phone"><span>Partner phone</span><strong>{{ order.deliveryPartner.phone }}</strong></div>
           </div>
         </article>
       </section>
@@ -64,6 +78,15 @@ import { ORDER_FLOW, ORDER_LABELS } from '../../shared/order-flow';
     }
     .timeline-step.active { background: #fff0e8; color: #c2410c; }
     .timeline-step.complete { background: #eef9f2; color: var(--qb-success); }
+    .contact-card {
+      display: grid;
+      gap: 8px;
+    }
+    .contact-card p,
+    .muted-copy {
+      color: var(--qb-text-muted);
+      line-height: 1.6;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -71,7 +94,9 @@ export class CustomerOrderDetailPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly orderService = inject(OrderService);
   private readonly paymentService = inject(PaymentService);
+  private readonly realtimeService = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly orderId = Number(this.route.snapshot.paramMap.get('orderId'));
 
   readonly loading = signal(true);
   readonly error = signal('');
@@ -81,8 +106,30 @@ export class CustomerOrderDetailPageComponent {
   readonly ORDER_LABELS = ORDER_LABELS;
 
   constructor() {
-    const orderId = Number(this.route.snapshot.paramMap.get('orderId'));
-    this.orderService.getOrderById(orderId)
+    this.loadOrder();
+    this.paymentService.getPaymentByOrder(this.orderId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (payment) => this.payment.set(payment), error: () => undefined });
+    this.realtimeService.orderEvents$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (event.orderId === this.orderId) {
+          this.loadOrder();
+        }
+      });
+  }
+
+  isStepActive(current: Order['orderStatus'], step: Order['orderStatus']): boolean {
+    return current === step;
+  }
+
+  isStepComplete(current: Order['orderStatus'], step: Order['orderStatus']): boolean {
+    return this.flow.indexOf(current) > this.flow.indexOf(step);
+  }
+
+  private loadOrder(): void {
+    this.loading.set(true);
+    this.orderService.getOrderById(this.orderId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (order) => {
@@ -94,17 +141,5 @@ export class CustomerOrderDetailPageComponent {
           this.loading.set(false);
         }
       });
-
-    this.paymentService.getPaymentByOrder(orderId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: (payment) => this.payment.set(payment), error: () => undefined });
-  }
-
-  isStepActive(current: Order['orderStatus'], step: Order['orderStatus']): boolean {
-    return current === step;
-  }
-
-  isStepComplete(current: Order['orderStatus'], step: Order['orderStatus']): boolean {
-    return this.flow.indexOf(current) > this.flow.indexOf(step);
   }
 }
