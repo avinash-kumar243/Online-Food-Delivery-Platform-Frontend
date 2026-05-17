@@ -14,7 +14,6 @@ import { AdminDashboardPageComponent } from './pages/admin/admin-dashboard-page.
 import { AdminDeliveryPartnersPageComponent } from './pages/admin/admin-delivery-partners-page.component';
 import { AdminOrdersPageComponent } from './pages/admin/admin-orders-page.component';
 import { AdminPaymentsPageComponent } from './pages/admin/admin-payments-page.component';
-import { AdminPlaceholderPageComponent } from './pages/admin/admin-placeholder-page.component';
 import { AdminReviewsPageComponent } from './pages/admin/admin-reviews-page.component';
 import { AdminRestaurantsPageComponent } from './pages/admin/admin-restaurants-page.component';
 import { AdminUsersPageComponent } from './pages/admin/admin-users-page.component';
@@ -117,15 +116,6 @@ export const routes: Routes = [
       { path: 'orders', component: AdminOrdersPageComponent },
       { path: 'payments', component: AdminPaymentsPageComponent },
       { path: 'reviews', component: AdminReviewsPageComponent },
-      {
-        path: 'notifications',
-        component: AdminPlaceholderPageComponent,
-        data: {
-          title: 'Notifications',
-          description: 'Send platform-wide or targeted operational notifications.',
-          note: 'This repo does not currently include a notification-service, so there is no live backend API to bind here yet.'
-        }
-      },
       { path: 'analytics', component: AdminAnalyticsPageComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
