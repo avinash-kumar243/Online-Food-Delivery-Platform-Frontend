@@ -74,6 +74,15 @@ p {
 
 img {
   max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+svg,
+canvas,
+video,
+iframe {
+  max-width: 100%;
 }
 
 button,
@@ -100,6 +109,8 @@ select,
 
 .dashboard-page {
   min-height: 100vh;
+  width: 100%;
+  overflow-x: clip;
   background:
     radial-gradient(circle at top left, rgba(15, 122, 95, 0.14), transparent 28rem),
     radial-gradient(circle at 80% 0, rgba(245, 158, 11, 0.1), transparent 24rem),
@@ -419,7 +430,8 @@ select,
 .cards-grid,
 .stack-list,
 .meta-list,
-.pill-row {
+.pill-row,
+.responsive-grid {
   display: grid;
   gap: 16px;
 }
@@ -441,7 +453,24 @@ select,
   border-radius: var(--qb-radius-md);
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.68);
+  min-width: 0;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.responsive-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+
+.text-break,
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .list-card:hover,
@@ -542,6 +571,10 @@ select:focus {
     flex-direction: column;
   }
 
+  .section-header > * {
+    width: 100%;
+  }
+
   .section-header h1,
   .section-header h2 {
     max-width: none;
@@ -570,5 +603,27 @@ select:focus {
 
   .meta-row strong {
     text-align: left;
+  }
+
+  .status-chip {
+    max-width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .surface-card,
+  .page-hero,
+  .section-card,
+  .panel-card,
+  .filters-card,
+  .hero-card,
+  .modal-card,
+  .auth-card {
+    border-radius: 18px;
   }
 }
