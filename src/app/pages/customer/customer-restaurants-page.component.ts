@@ -40,7 +40,13 @@ import { RestaurantService } from '../../services/restaurant.service';
       <a *ngFor="let restaurant of filteredRestaurants()" class="surface-card restaurant-card" [routerLink]="['/customer/restaurants', restaurant.restaurantId]">
         <ng-container *ngIf="getRestaurantImage(restaurant) as restaurantImage; else restaurantFallback">
           <div class="restaurant-image-wrap">
-            <img class="restaurant-image" [src]="restaurantImage" [alt]="restaurant.name" loading="lazy" />
+            <img
+              class="restaurant-image"
+              [src]="restaurantImage"
+              [alt]="restaurant.name"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+              (error)="markImageBroken(restaurant.restaurantId)" />
             <div class="restaurant-image-overlay">
               <span class="image-badge">{{ restaurant.cuisine }}</span>
             </div>
@@ -186,6 +192,7 @@ export class CustomerRestaurantsPageComponent {
   readonly error = signal('');
   readonly restaurants = signal<Restaurant[]>([]);
   readonly filteredRestaurants = signal<Restaurant[]>([]);
+  readonly brokenImages = signal<Record<number, boolean>>({});
 
   searchTerm = '';
   cuisineFilter = '';
@@ -230,6 +237,14 @@ export class CustomerRestaurantsPageComponent {
   }
 
   getRestaurantImage(restaurant: Restaurant): string | null {
+    if (this.brokenImages()[restaurant.restaurantId]) {
+      return null;
+    }
+
     return getCustomerRestaurantImage(restaurant);
+  }
+
+  markImageBroken(restaurantId: number): void {
+    this.brokenImages.update((state) => ({ ...state, [restaurantId]: true }));
   }
 }
