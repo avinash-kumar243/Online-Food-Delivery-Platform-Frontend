@@ -4,17 +4,20 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent } from '../../components/shared/empty-state.component';
 import { LoaderComponent } from '../../components/shared/loader.component';
+import { SuspensionBannerComponent } from '../../components/shared/suspension-banner.component';
 import { MenuItem, Restaurant } from '../../models/app.models';
+import { AccountStatusService } from '../../services/account-status.service';
 import { getErrorMessage } from '../../services/api.utils';
 import { AuthService } from '../../services/auth.service';
 import { MenuService } from '../../services/menu.service';
 import { NotificationService } from '../../services/notification.service';
+import { ProfileService } from '../../services/profile.service';
 import { RestaurantService } from '../../services/restaurant.service';
 
 @Component({
   selector: 'app-owner-menu-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, EmptyStateComponent, LoaderComponent],
+  imports: [CommonModule, RouterLink, EmptyStateComponent, LoaderComponent, SuspensionBannerComponent],
   template: `
     <section class="section-header">
       <div>
@@ -22,11 +25,16 @@ import { RestaurantService } from '../../services/restaurant.service';
         <h1>Keep your catalog accurate and order-ready.</h1>
         <p class="dashboard-subtitle">CRUD actions below use the real menu service endpoints.</p>
       </div>
-      <a routerLink="/restaurant-owner/menu/add" class="primary-btn" [class.disabled-link]="!restaurant()?.isApproved">Add menu item</a>
+      <a routerLink="/restaurant-owner/menu/add" class="primary-btn" [class.disabled-link]="ownerSuspended() || !restaurant()?.isApproved">Add menu item</a>
     </section>
 
     <app-loader *ngIf="loading()"></app-loader>
     <section *ngIf="error()" class="empty-state">{{ error() }}</section>
+    <app-suspension-banner
+      *ngIf="ownerSuspended()"
+      class="dashboard-section"
+      [message]="accountStatusService.getSuspensionBannerMessage()">
+    </app-suspension-banner>
     <section *ngIf="restaurant() && !restaurant()?.isApproved" class="empty-state">Your restaurant must be approved before menu management is enabled.</section>
 
     <section class="stack-list dashboard-section" *ngIf="!loading() && !error() && restaurant()?.isApproved && menuItems().length; else empty">
@@ -36,9 +44,9 @@ import { RestaurantService } from '../../services/restaurant.service';
           <p>{{ item.categoryName || 'Menu item' }} - Rs {{ item.price }}</p>
         </div>
         <div class="actions">
-          <button type="button" class="ghost-btn" (click)="toggle(item)">{{ item.isAvailable ? 'Mark unavailable' : 'Mark available' }}</button>
-          <a class="secondary-btn" [routerLink]="['/restaurant-owner/menu/edit', item.itemId]">Edit</a>
-          <button type="button" class="secondary-btn" (click)="remove(item)">Delete</button>
+          <button type="button" class="ghost-btn" [disabled]="ownerSuspended()" (click)="toggle(item)">{{ item.isAvailable ? 'Mark unavailable' : 'Mark available' }}</button>
+          <a class="secondary-btn" [routerLink]="['/restaurant-owner/menu/edit', item.itemId]" [class.disabled-link]="ownerSuspended()">Edit</a>
+          <button type="button" class="secondary-btn" [disabled]="ownerSuspended()" (click)="remove(item)">Delete</button>
         </div>
       </article>
     </section>
@@ -66,13 +74,16 @@ export class OwnerMenuPageComponent {
   private readonly authService = inject(AuthService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly menuService = inject(MenuService);
+  private readonly profileService = inject(ProfileService);
   private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly accountStatusService = inject(AccountStatusService);
 
   readonly loading = signal(true);
   readonly error = signal('');
   readonly restaurant = signal<Restaurant | null>(null);
   readonly menuItems = signal<MenuItem[]>([]);
+  readonly ownerSuspended = signal(false);
 
   constructor() {
     const ownerId = this.authService.getCurrentUser()?.id;
@@ -81,6 +92,13 @@ export class OwnerMenuPageComponent {
       this.loading.set(false);
       return;
     }
+
+    this.profileService.getRestaurantOwnerProfile(ownerId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.ownerSuspended.set(this.accountStatusService.isSuspended(profile)),
+        error: () => undefined
+      });
 
     this.restaurantService.getMyRestaurant(ownerId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -116,6 +134,10 @@ export class OwnerMenuPageComponent {
   }
 
   toggle(item: MenuItem): void {
+    if (this.ownerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     this.menuService.toggleAvailability(item.itemId, !item.isAvailable)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -128,6 +150,10 @@ export class OwnerMenuPageComponent {
   }
 
   remove(item: MenuItem): void {
+    if (this.ownerSuspended()) {
+      this.accountStatusService.notifySuspended();
+      return;
+    }
     this.menuService.deleteMenuItem(item.itemId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
